@@ -437,82 +437,282 @@
     </div>
 
     <script>
+        // Core scanner variables
         let html5QrcodeScanner = null;
-
-        // Debug function
-        function updateDebugInfo(message) {
-            const debug = document.getElementById('debug');
-            debug.innerHTML += `<div>${new Date().toLocaleTimeString()}: ${message}</div>`;
-            debug.scrollTop = debug.scrollHeight;
-        }
+        let hasPermission = false;
 
         // Request camera permission explicitly
         async function requestCameraPermission() {
             try {
-                updateDebugInfo('Requesting camera permission...');
                 const stream = await navigator.mediaDevices.getUserMedia({ 
                     video: true,
                     audio: false
                 });
-                updateDebugInfo('Camera permission granted!');
+                
+                hasPermission = true;
+                updateScannerStatus('Permission Granted');
+                
+                // Stop the test stream
                 stream.getTracks().forEach(track => track.stop());
-                testCamera(); // Refresh camera list after getting permission
-            } catch (error) {
-                updateDebugInfo(`Permission error: ${error.message}`);
-                document.getElementById('error').innerText = 
-                    `Permission Error: ${error.message}. Please check your browser settings.`;
-            }
-        }
-
-        // Test camera access
-        async function testCamera() {
-            try {
-                updateDebugInfo('Checking for cameras...');
                 
-                if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
-                    throw new Error('mediaDevices API not supported');
-                }
-
-                await navigator.mediaDevices.getUserMedia({ video: true });
-                
+                // Update camera list
                 const devices = await navigator.mediaDevices.enumerateDevices();
-                updateDebugInfo(`Found ${devices.length} total devices`);
-                
                 const videoDevices = devices.filter(device => device.kind === 'videoinput');
-                updateDebugInfo(`Found ${videoDevices.length} video devices`);
                 
                 const cameraSelect = document.getElementById('camera-select');
                 cameraSelect.innerHTML = '<option value="">Select Camera</option>';
                 
                 videoDevices.forEach((device, index) => {
-                    updateDebugInfo(`Camera ${index + 1}: ${device.label || 'unnamed device'}`);
                     const option = document.createElement('option');
                     option.value = device.deviceId;
                     option.text = device.label || `Camera ${index + 1}`;
                     cameraSelect.appendChild(option);
                 });
 
-                if (videoDevices.length === 0) {
-                    throw new Error('No cameras found');
+                if (videoDevices.length === 1) {
+                    cameraSelect.value = videoDevices[0].deviceId;
                 }
 
-                document.getElementById('error').innerText = 'Camera access successful!';
-                document.getElementById('result').innerText = 
-                    `Found ${videoDevices.length} camera(s). Please select one from the dropdown.`;
-                
+                document.getElementById('error').classList.add('hidden');
             } catch (error) {
-                updateDebugInfo(`Error: ${error.message}`);
+                updateScannerStatus('Permission Denied');
+                document.getElementById('error').classList.remove('hidden');
                 document.getElementById('error').innerText = 
-                    `Camera Error: ${error.message}\n\n` +
-                    'Please ensure:\n' +
-                    '1. Your camera is connected\n' +
-                    '2. You\'ve granted camera permissions\n' +
-                    '3. No other app is using the camera\n' +
-                    '4. You\'re using HTTPS or localhost';
+                    `Permission Error: ${error.message}. Please check your browser settings.`;
             }
         }
 
-        // Add these functions for statistics
+        // Start QR scanner with optimized settings
+        async function startScanner() {
+            if (!hasPermission) {
+                document.getElementById('error').classList.remove('hidden');
+                document.getElementById('error').innerText = 'Please request camera permission first.';
+                return;
+            }
+
+            const cameraId = document.getElementById('camera-select').value;
+            if (!cameraId) {
+                document.getElementById('error').classList.remove('hidden');
+                document.getElementById('error').innerText = 'Please select a camera first.';
+                return;
+            }
+
+            try {
+                // Stop any existing scanner
+                if (html5QrcodeScanner) {
+                    await html5QrcodeScanner.stop();
+                }
+
+                // Create new scanner instance
+                const html5Qrcode = new Html5Qrcode("reader");
+                html5QrcodeScanner = html5Qrcode;
+
+                const config = {
+                    fps: 30,
+                    qrbox: { width: 300, height: 300 },
+                    aspectRatio: 1.0,
+                    formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ],
+                    videoConstraints: {
+                        deviceId: cameraId,
+                        width: { min: 640, ideal: 1080, max: 1920 },
+                        height: { min: 480, ideal: 720, max: 1080 },
+                        facingMode: "environment",
+                        focusMode: "continuous"
+                    }
+                };
+
+                // Start scanning
+                await html5Qrcode.start(
+                    { deviceId: cameraId },
+                    config,
+                    onScanSuccess,
+                    onScanFailure
+                );
+
+                updateScannerStatus('Scanning');
+                document.getElementById('error').classList.add('hidden');
+                document.getElementById('result').innerHTML = 'Scanner ready. Position QR code in the frame.';
+            } catch (error) {
+                document.getElementById('error').classList.remove('hidden');
+                document.getElementById('error').innerText = `Scanner Error: ${error.message}`;
+            }
+        }
+
+        // Stop scanner gracefully
+        async function stopScanner() {
+            try {
+                if (html5QrcodeScanner) {
+                    await html5QrcodeScanner.stop();
+                    document.getElementById('reader').innerHTML = '';
+                    document.getElementById('result').innerHTML = 'Scanner stopped';
+                    document.getElementById('error').classList.add('hidden');
+                    updateScannerStatus('Ready');
+                }
+            } catch (error) {
+                document.getElementById('error').classList.remove('hidden');
+                document.getElementById('error').innerText = `Stop Error: ${error.message}`;
+            }
+        }
+
+        // Handle successful QR code scan
+        function onScanSuccess(qrCodeMessage) {
+            // Basic validation of QR code format (221-XXXX-VALID)
+            if (!qrCodeMessage.match(/^221-\d{4}-VALID$/)) {
+                return; // Silently ignore invalid formats
+            }
+
+            // Pause scanner to prevent duplicate scans
+            if (html5QrcodeScanner) {
+                html5QrcodeScanner.pause();
+            }
+
+            // Play success sound
+            const audio = new Audio('/sounds/beep.mp3');
+            audio.play().catch(e => console.log('Audio play failed:', e));
+
+            // Show loading state
+            document.getElementById('result').innerHTML = `
+                <div class="p-4 bg-blue-50 text-blue-800 rounded-lg">
+                    <div class="flex items-center">
+                        <svg class="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Processing scan...
+                    </div>
+                </div>
+            `;
+
+            // Send QR code data to server
+            fetch('/student-scan', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify({ qr_data: qrCodeMessage })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update statistics
+                    updateStatistics(true);
+                    
+                    // Show success message with student info
+                    document.getElementById('result').innerHTML = `
+                        <div class="p-4 bg-green-50 text-green-800 rounded-lg">
+                            <div class="flex items-center">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                                <span class="font-medium">Success!</span>
+                            </div>
+                            <div class="mt-2">
+                                <p class="text-sm font-medium">Student Information:</p>
+                                <ul class="mt-1 text-sm">
+                                    <li>Name: ${data.data.student.name}</li>
+                                    <li>ID: ${data.data.student.student_id}</li>
+                                    <li>Course: ${data.data.student.course}</li>
+                                    <li>Year Level: ${data.data.student.year_level}</li>
+                                </ul>
+                                <p class="mt-2 text-sm text-green-600">
+                                    ✓ Validated for ${data.data.semester} Semester, ${data.data.academic_year}
+                                </p>
+                            </div>
+                        </div>
+                    `;
+
+                    // Add to scan history
+                    addToScanHistory(data);
+
+                    // Resume scanner after success
+                    setTimeout(() => {
+                        if (html5QrcodeScanner) {
+                            html5QrcodeScanner.resume();
+                        }
+                    }, 1500);
+                } else {
+                    // Play error sound
+                    const errorAudio = new Audio('/sounds/error.mp3');
+                    errorAudio.play().catch(e => console.log('Audio play failed:', e));
+
+                    // Show error message
+                    document.getElementById('result').innerHTML = `
+                        <div class="p-4 bg-red-50 text-red-800 rounded-lg">
+                            <div class="flex items-center">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                                <span class="font-medium">Invalid QR Code</span>
+                            </div>
+                            <div class="mt-2 text-sm">
+                                ${data.message}
+                            </div>
+                        </div>
+                    `;
+
+                    // Update statistics
+                    updateStatistics(false);
+
+                    // Resume scanner after error
+                    setTimeout(() => {
+                        if (html5QrcodeScanner) {
+                            html5QrcodeScanner.resume();
+                        }
+                    }, 1000);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('result').innerHTML = `
+                    <div class="p-4 bg-red-50 text-red-800 rounded-lg">
+                        <div class="flex items-center">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <span class="font-medium">Error</span>
+                        </div>
+                        <div class="mt-2 text-sm">
+                            Failed to process QR code. Please try again.
+                        </div>
+                    </div>
+                `;
+
+                // Resume scanner after error
+                setTimeout(() => {
+                    if (html5QrcodeScanner) {
+                        html5QrcodeScanner.resume();
+                    }
+                }, 1000);
+            });
+        }
+
+        function onScanFailure(error) {
+            // Silent failure - don't show errors for failed scans
+            return;
+        }
+
+        // Update scanner status with visual feedback
+        function updateScannerStatus(status) {
+            const statusBadge = document.getElementById('scanner-status');
+            const connectionStatus = document.getElementById('connection-status');
+            
+            let color = 'bg-yellow-500';
+            if (status === 'Scanning') color = 'bg-green-500';
+            else if (status === 'Error' || status === 'Permission Denied') color = 'bg-red-500';
+            
+            statusBadge.innerHTML = `
+                <span class="w-2 h-2 ${color} rounded-full mr-2"></span>
+                ${status}
+            `;
+            
+            connectionStatus.innerHTML = `
+                <span class="w-2 h-2 ${color} rounded-full mr-2"></span>
+                ${status}
+            `;
+        }
+
+        // Statistics functions
         let todayScans = 0;
         let successfulScans = 0;
         let failedScans = 0;
@@ -530,770 +730,104 @@
             document.getElementById('failed-scans').textContent = failedScans;
         }
 
-        // Modify the onScanSuccess function to update statistics
-        function onScanSuccess(decodedText, decodedResult) {
-            console.log(`QR Code detected: ${decodedText}`);
-            
-            // Show loading state
-            document.getElementById('result').innerHTML = `
-                <div class="p-4 bg-yellow-100 text-yellow-800 rounded-lg">
-                    <div class="flex items-center">
-                        <svg class="animate-spin h-5 w-5 mr-3 text-yellow-800" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Validating Student ID...
-                    </div>
-                </div>
-            `;
+        // Add to scan history
+        function addToScanHistory(scanData) {
+            if (!scanData.success) return;
 
-            // Basic validation of QR code format
-            if (!decodedText.match(/^221-\d{4}-VALID$/)) {
-                updateStatistics(false);
-                document.getElementById('result').innerHTML = `
-                    <div class="p-4 bg-red-100 text-red-800 rounded-lg">
-                        <div class="flex items-center">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            <span class="font-medium">Invalid QR Code Format</span>
-                        </div>
-                        <div class="mt-2 text-sm">
-                            Expected format: 221-XXXX-VALID (e.g., 221-2021-VALID)
-                        </div>
-                    </div>
-                `;
-                return;
-            }
-            
-            // Send QR data to server
-            fetch('/student-scan', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                },
-                body: JSON.stringify({
-                    qr_data: decodedText
-                })
-            })
-            .then(response => {
-                if (!response.ok) {
-                    updateStatistics(false);
-                    if (response.status === 404) {
-                        throw new Error('Invalid QR code or student not found');
-                    }
-                    throw new Error('Network response was not ok');
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    updateStatistics(true);
-                    // Play success sound
-                    const audio = new Audio('/sounds/success.mp3');
-                    audio.play().catch(e => console.log('Audio play failed:', e));
-
-                    // Show success message with student details
-                    document.getElementById('result').innerHTML = `
-                        <div class="p-4 bg-green-100 text-green-800 rounded-lg">
-                            <div class="flex items-center mb-2">
-                                <svg class="w-5 h-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                                <span class="font-medium">Validation Successful</span>
-                            </div>
-                            <div class="mt-2">
-                                <div class="font-medium text-lg">${data.data.student.name}</div>
-                                <div class="text-sm">Student ID: ${data.data.student.student_id}</div>
-                                <div class="text-sm">Course: ${data.data.student.course}</div>
-                                <div class="text-sm">Year Level: ${data.data.student.year_level}</div>
-                                <div class="text-xs mt-2 text-green-600">
-                                    Validated at ${new Date().toLocaleString()}
-                                </div>
-                            </div>
-                        </div>
-                    `;
-
-                    // Add to scan history
-                    addToScanHistory(data);
-
-                    // Update status badge
-                    updateScannerStatus('Ready');
-                } else {
-                    updateStatistics(false);
-                    // Play error sound
-                    const audio = new Audio('/sounds/error.mp3');
-                    audio.play().catch(e => console.log('Audio play failed:', e));
-
-                    // Show error message
-                    document.getElementById('result').innerHTML = `
-                        <div class="p-4 bg-red-100 text-red-800 rounded-lg">
-                            <div class="flex items-center">
-                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                                <span class="font-medium">Validation Failed</span>
-                            </div>
-                            <div class="mt-2 text-sm">
-                                ${data.message}
-                            </div>
-                        </div>
-                    `;
-
-                    // Update status badge
-                    updateScannerStatus('Ready');
-                }
-            })
-            .catch(error => {
-                updateStatistics(false);
-                console.error('Error:', error);
-                // Show error message
-                document.getElementById('result').innerHTML = `
-                    <div class="p-4 bg-red-100 text-red-800 rounded-lg">
-                        <div class="flex items-center">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            <span class="font-medium">Error</span>
-                        </div>
-                        <div class="mt-2 text-sm">
-                            ${error.message}
-                        </div>
-                    </div>
-                `;
-
-                // Update status badge
-                updateScannerStatus('Error');
-            });
-        }
-
-        function onScanFailure(error) {
-            // console.warn(`Code scan error = ${error}`);
-        }
-
-        async function startScanner() {
-            const cameraId = document.getElementById('camera-select').value;
-            if (!cameraId) {
-                document.getElementById('error').innerText = 'Please select a camera first!';
-                return;
-            }
-
-            try {
-                if (html5QrcodeScanner) {
-                    await html5QrcodeScanner.clear();
-                }
-
-                html5QrcodeScanner = new Html5QrcodeScanner(
-                    "reader", 
-                    { 
-                        fps: 10,
-                        qrbox: { width: 250, height: 250 },
-                        videoConstraints: {
-                            deviceId: cameraId
-                        }
-                    }
-                );
-                html5QrcodeScanner.render(onScanSuccess, onScanFailure);
-                document.getElementById('error').innerText = '';
-            } catch (error) {
-                document.getElementById('error').innerText = `Scanner Error: ${error.message}`;
-                console.error('Scanner Error:', error);
-            }
-        }
-
-        async function stopScanner() {
-            if (html5QrcodeScanner) {
-                try {
-                    await html5QrcodeScanner.clear();
-                    document.getElementById('reader').innerHTML = '';
-                    document.getElementById('result').innerHTML = 'Scanner stopped';
-                    document.getElementById('error').innerText = '';
-                } catch (error) {
-                    document.getElementById('error').innerText = `Stop Error: ${error.message}`;
-                }
-            }
-        }
-
-        // Initialize on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            updateDebugInfo('Page loaded');
-            // Check if running on HTTPS or localhost
-            if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
-                updateDebugInfo('WARNING: Camera API requires HTTPS or localhost');
-                document.getElementById('error').innerText = 
-                    'Warning: Camera access requires HTTPS or localhost';
-            }
-            requestCameraPermission();
-            
-            // Load scan history
-            loadScanHistory();
-        });
-
-        // Add this new function for loading scan history
-        function loadScanHistory() {
-            fetch('/student-scan/history')
-                .then(response => response.json())
-                .then(scans => {
-                    const scanHistory = document.getElementById('scan-history');
-                    scanHistory.innerHTML = ''; // Clear existing history
-                    
-                    scans.forEach(scan => {
-                        addToScanHistory(scan, false); // false means don't check for duplicates
-                    });
-                })
-                .catch(error => {
-                    console.error('Error loading scan history:', error);
-                });
-        }
-
-        // Modified addToScanHistory function
-        function addToScanHistory(scanData, checkDuplicate = true) {
             const scanHistory = document.getElementById('scan-history');
             const validatedStudents = document.getElementById('validated-students');
             
-            if (checkDuplicate && scanData.success) {
-                // Check for existing validation in localStorage
-                const validatedList = JSON.parse(localStorage.getItem('validatedStudents') || '[]');
-                const existingValidation = validatedList.find(v => v.student_id === scanData.data.student.student_id);
-                
-                if (!existingValidation) {
-                    // Add to validated students list
-                    const validationElement = document.createElement('div');
-                    validationElement.className = 'p-4 bg-green-50 rounded-lg border border-green-200 mb-3';
-                    validationElement.innerHTML = `
-                        <div class="flex justify-between items-start">
-                            <div class="flex-grow">
-                                <div class="flex items-center">
-                                    <div class="font-medium text-gray-900 text-lg">${scanData.data.student.name}</div>
-                                    <span class="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Validated</span>
-                                </div>
-                                <div class="text-sm text-gray-600 mt-1">ID: ${scanData.data.student.student_id}</div>
-                                <div class="text-sm text-gray-600">Course: ${scanData.data.student.course}</div>
-                                <div class="text-sm text-gray-600">Year Level: ${scanData.data.student.year_level}</div>
-                                <div class="mt-2 text-sm text-green-600">
-                                    ✓ Validated for ${scanData.data.semester} Semester, ${scanData.data.academic_year}
-                                </div>
-                                <div class="text-xs text-gray-500 mt-1">
-                                    Validated on ${new Date(scanData.data.scan.created_at).toLocaleString()}
-                                </div>
-                            </div>
+            // Add to scan history
+            const historyEntry = document.createElement('div');
+            historyEntry.className = 'p-4 bg-white rounded-lg shadow mb-3';
+            historyEntry.innerHTML = `
+                <div class="flex justify-between items-start">
+                    <div class="flex-grow">
+                        <div class="flex items-center">
+                            <div class="font-medium text-gray-900">${scanData.data.student.name}</div>
+                            <span class="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Validated</span>
                         </div>
-                    `;
-                    
-                    if (validatedStudents.firstChild) {
-                        validatedStudents.insertBefore(validationElement, validatedStudents.firstChild);
-                    } else {
-                        validatedStudents.appendChild(validationElement);
-                    }
+                        <div class="text-sm text-gray-600 mt-1">ID: ${scanData.data.student.student_id}</div>
+                        <div class="text-sm text-gray-600">Course: ${scanData.data.student.course}</div>
+                        <div class="text-sm text-gray-600">Year Level: ${scanData.data.student.year_level}</div>
+                        <div class="mt-2 text-xs text-gray-500">
+                            Scanned on ${new Date().toLocaleString()}
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            scanHistory.insertBefore(historyEntry, scanHistory.firstChild);
 
-                    // Update localStorage with more details
-                    validatedList.push({
-                        student_id: scanData.data.student.student_id,
-                        name: scanData.data.student.name,
-                        course: scanData.data.student.course,
-                        year_level: scanData.data.student.year_level,
-                        semester: scanData.data.semester,
-                        academic_year: scanData.data.academic_year,
-                        timestamp: scanData.data.scan.created_at || new Date().toISOString()
-                    });
-                    localStorage.setItem('validatedStudents', JSON.stringify(validatedList));
-                }
-            }
-
-            // Add to scan history if visible
-            if (!scanHistory.classList.contains('hidden')) {
-                const scanElement = document.createElement('div');
-                scanElement.className = 'scan-history-item mb-3';
-                scanElement.setAttribute('data-student-id', scanData.data.student.student_id);
-                
-                scanElement.innerHTML = `
-                    <div class="flex justify-between items-start p-4 bg-white rounded-lg border border-gray-200">
+            // Add to validated students if not already present
+            const studentId = scanData.data.student.student_id;
+            if (!document.querySelector(`[data-student-id="${studentId}"]`)) {
+                const validationEntry = document.createElement('div');
+                validationEntry.className = 'p-4 bg-green-50 rounded-lg border border-green-200 mb-3';
+                validationEntry.setAttribute('data-student-id', studentId);
+                validationEntry.innerHTML = `
+                    <div class="flex justify-between items-start">
                         <div class="flex-grow">
-                            <div class="flex items-center justify-between">
-                                <div class="font-medium text-gray-900">${scanData.data.student.name}</div>
-                                <span class="px-2 py-1 ${scanData.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'} text-xs rounded-full">
-                                    ${scanData.success ? 'Validated' : 'Failed'}
-                                </span>
+                            <div class="flex items-center">
+                                <div class="font-medium text-gray-900 text-lg">${scanData.data.student.name}</div>
+                                <span class="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Validated</span>
                             </div>
                             <div class="text-sm text-gray-600 mt-1">ID: ${scanData.data.student.student_id}</div>
                             <div class="text-sm text-gray-600">Course: ${scanData.data.student.course}</div>
                             <div class="text-sm text-gray-600">Year Level: ${scanData.data.student.year_level}</div>
-                            ${scanData.success ? `
-                                <div class="mt-2 text-sm text-green-600">
-                                    ✓ Validated for ${scanData.data.semester} Semester, ${scanData.data.academic_year}
-                                </div>
-                            ` : `
-                                <div class="mt-2 text-sm text-red-600">
-                                    ✗ ${scanData.message}
-                                </div>
-                            `}
+                            <div class="mt-2 text-sm text-green-600">
+                                ✓ Validated for ${scanData.data.semester} Semester, ${scanData.data.academic_year}
+                            </div>
                             <div class="text-xs text-gray-500 mt-1">
-                                Scanned on ${new Date(scanData.data.scan.created_at).toLocaleString()}
+                                Validated on ${new Date().toLocaleString()}
                             </div>
                         </div>
                     </div>
                 `;
                 
-                if (scanHistory.firstChild) {
-                    scanHistory.insertBefore(scanElement, scanHistory.firstChild);
-                } else {
-                    scanHistory.appendChild(scanElement);
-                }
+                validatedStudents.insertBefore(validationEntry, validatedStudents.firstChild);
             }
         }
 
-        // Load validated students from localStorage and scan history
-        async function loadValidatedStudents() {
-            const validatedStudents = document.getElementById('validated-students');
-            validatedStudents.innerHTML = ''; // Clear existing list
-            
-            try {
-                // Fetch scan history from server
-                const response = await fetch('/student-scan/history');
-                const scans = await response.json();
-                
-                // Filter successful validations and sort by date
-                const validatedScans = scans
-                    .filter(scan => scan.success)
-                    .sort((a, b) => new Date(b.data.scan.created_at) - new Date(a.data.scan.created_at));
-                
-                // Display each validated student
-                validatedScans.forEach(scan => {
-                    const validationElement = document.createElement('div');
-                    validationElement.className = 'p-4 bg-green-50 rounded-lg border border-green-200 mb-3';
-                    validationElement.innerHTML = `
-                        <div class="flex justify-between items-start">
-                            <div class="flex-grow">
-                                <div class="flex items-center">
-                                    <div class="font-medium text-gray-900 text-lg">${scan.data.student.name}</div>
-                                    <span class="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Validated</span>
-                                </div>
-                                <div class="text-sm text-gray-600 mt-1">ID: ${scan.data.student.student_id}</div>
-                                <div class="text-sm text-gray-600">Course: ${scan.data.student.course}</div>
-                                <div class="text-sm text-gray-600">Year Level: ${scan.data.student.year_level}</div>
-                                <div class="mt-2 text-sm text-green-600">
-                                    ✓ Validated for ${scan.data.semester} Semester, ${scan.data.academic_year}
-                                </div>
-                                <div class="text-xs text-gray-500 mt-1">
-                                    Validated on ${new Date(scan.data.scan.created_at).toLocaleString()}
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                    validatedStudents.appendChild(validationElement);
-                });
-            } catch (error) {
-                console.error('Error loading validated students:', error);
-                validatedStudents.innerHTML = `
-                    <div class="p-4 bg-red-50 text-red-800 rounded-lg">
-                        Error loading validated students. Please try again.
-                    </div>
-                `;
-            }
-        }
-
-        // Update DOMContentLoaded to use new loading function
-        document.addEventListener('DOMContentLoaded', function() {
-            // ... existing DOMContentLoaded code ...
-            loadValidatedStudents(); // Load validated students from scan history
-        });
-
-        // Add this new function for clearing history
-        function clearHistory() {
-            const historyDiv = document.getElementById('scan-history');
-            historyDiv.innerHTML = '';
-        }
-
-        // Update the error display function
-        function updateError(message) {
-            const errorDiv = document.getElementById('error');
-            if (message) {
-                errorDiv.textContent = message;
-                errorDiv.classList.remove('hidden');
-            } else {
-                errorDiv.classList.add('hidden');
-            }
-        }
-
-        // Update scanner status
-        function updateScannerStatus(status) {
-            document.getElementById('scanner-status').textContent = status;
-            document.getElementById('connection-status').innerHTML = `
-                <span class="w-2 h-2 ${status === 'Scanning' ? 'bg-green-500' : 'bg-yellow-500'} rounded-full mr-2"></span>
-                ${status}
-            `;
-        }
-
-        // Call this when starting/stopping the scanner
-        function onScannerStateChange(isScanning) {
-            updateScannerStatus(isScanning ? 'Scanning' : 'Ready');
-        }
-
-        // Admin functionality
-        function toggleView(view) {
-            document.getElementById('scanner-view').style.display = view === 'scanner' ? 'block' : 'none';
-            document.getElementById('admin-view').style.display = view === 'admin' ? 'block' : 'none';
-        }
-
-        function switchTab(tabId) {
-            // Hide all content
-            document.querySelectorAll('.admin-content').forEach(content => {
-                content.classList.remove('active');
-            });
-            document.querySelectorAll('.admin-tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
-
-            // Show selected content
-            document.getElementById(tabId).classList.add('active');
-            event.target.classList.add('active');
-        }
-
-        // Initialize charts
-        document.addEventListener('DOMContentLoaded', function() {
-            // Validation Trends Chart
-            const validationCtx = document.getElementById('validationChart').getContext('2d');
-            new Chart(validationCtx, {
-                type: 'line',
-                data: {
-                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-                    datasets: [{
-                        label: 'Validations',
-                        data: [65, 59, 80, 81, 56, 55, 40],
-                        borderColor: '#10B981',
-                        tension: 0.1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: 'Weekly Validation Trends'
-                        }
-                    }
-                }
-            });
-
-            // Hourly Activity Chart
-            const hourlyCtx = document.getElementById('hourlyChart').getContext('2d');
-            new Chart(hourlyCtx, {
-                type: 'bar',
-                data: {
-                    labels: ['8AM', '9AM', '10AM', '11AM', '12PM', '1PM', '2PM', '3PM', '4PM', '5PM'],
-                    datasets: [{
-                        label: 'Validations per Hour',
-                        data: [12, 19, 15, 25, 22, 30, 28, 20, 15, 10],
-                        backgroundColor: '#10B981'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: 'Hourly Validation Activity'
-                        }
-                    }
-                }
-            });
-        });
-
-        // Bulk Operations Functions
-        function importData() {
-            const fileInput = document.getElementById('file-upload');
-            if (fileInput.files.length > 0) {
-                // Handle file upload
-                const formData = new FormData();
-                formData.append('file', fileInput.files[0]);
-                
-                fetch('/api/import-students', {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                    }
-                })
+        // Load scan history
+        function loadScanHistory() {
+            fetch('/student-scan/history')
                 .then(response => response.json())
                 .then(data => {
-                    alert('Import successful!');
+                    const scanHistory = document.getElementById('scan-history');
+                    const validatedStudents = document.getElementById('validated-students');
+                    
+                    // Clear existing entries
+                    scanHistory.innerHTML = '';
+                    validatedStudents.innerHTML = '';
+                    
+                    // Add each scan to history
+                    data.forEach(scan => {
+                        addToScanHistory({
+                            success: true,
+                            data: scan
+                        });
+                    });
                 })
                 .catch(error => {
-                    alert('Import failed: ' + error.message);
+                    console.error('Error loading scan history:', error);
+                    document.getElementById('scan-history').innerHTML = `
+                        <div class="p-4 bg-red-50 text-red-800 rounded-lg">
+                            Error loading scan history. Please refresh the page.
+                        </div>
+                    `;
                 });
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+                document.getElementById('error').classList.remove('hidden');
+                document.getElementById('error').innerText = 'Warning: Camera access requires HTTPS or localhost';
             }
-        }
-
-        function exportData() {
-            window.location.href = '/api/export-students';
-        }
-
-        function generateReport() {
-            // Implement report generation logic
-            alert('Generating report...');
-        }
-
-        // File upload handling
-        const dropZone = document.querySelector('.file-drop-zone');
-        
-        dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropZone.classList.add('bg-green-50');
-        });
-
-        dropZone.addEventListener('dragleave', () => {
-            dropZone.classList.remove('bg-green-50');
-        });
-
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropZone.classList.remove('bg-green-50');
-            const files = e.dataTransfer.files;
-            if (files.length > 0) {
-                document.getElementById('file-upload').files = files;
-            }
-        });
-
-        // Add these new functions
-        function toggleScanHistory() {
-            const scanHistory = document.getElementById('scan-history');
-            if (scanHistory.classList.contains('hidden')) {
-                loadScanHistory();
-                scanHistory.classList.remove('hidden');
-            } else {
-                scanHistory.classList.add('hidden');
-            }
-        }
-
-        function clearValidatedStudents() {
-            const validatedStudents = document.getElementById('validated-students');
-            validatedStudents.innerHTML = '';
-            localStorage.removeItem('validatedStudents');
-        }
-
-        function refreshScanHistory() {
+            updateScannerStatus('Ready');
             loadScanHistory();
-        }
-
-        // Load statistics from localStorage on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            // ... existing DOMContentLoaded code ...
-
-            // Load statistics
-            const stats = JSON.parse(localStorage.getItem('scanStats') || '{"today":"","todayScans":0,"successfulScans":0,"failedScans":0}');
-            const today = new Date().toDateString();
-            
-            if (stats.today !== today) {
-                // Reset stats for new day
-                todayScans = 0;
-                successfulScans = 0;
-                failedScans = 0;
-            } else {
-                todayScans = stats.todayScans;
-                successfulScans = stats.successfulScans;
-                failedScans = stats.failedScans;
-            }
-            
-            // Update display
-            document.getElementById('today-scans').textContent = todayScans;
-            document.getElementById('successful-scans').textContent = successfulScans;
-            document.getElementById('failed-scans').textContent = failedScans;
         });
-
-        // Save statistics to localStorage when updated
-        function saveStatistics() {
-            const stats = {
-                today: new Date().toDateString(),
-                todayScans,
-                successfulScans,
-                failedScans
-            };
-            localStorage.setItem('scanStats', JSON.stringify(stats));
-        }
-
-        // Add event listener for beforeunload to save statistics
-        window.addEventListener('beforeunload', saveStatistics);
-
-        // Add these functions for analytics
-        async function updateAnalytics() {
-            try {
-                const response = await fetch('/student-scan/history');
-                const scans = await response.json();
-                
-                // Calculate total validations
-                const totalValidations = scans.filter(scan => scan.success).length;
-                
-                // Calculate today's validations
-                const today = new Date().toDateString();
-                const todayValidations = scans.filter(scan => {
-                    const scanDate = new Date(scan.data.scan.created_at).toDateString();
-                    return scanDate === today && scan.success;
-                }).length;
-                
-                // Calculate success rate
-                const successRate = scans.length > 0 
-                    ? ((scans.filter(scan => scan.success).length / scans.length) * 100).toFixed(1)
-                    : '0.0';
-
-                // Update statistics cards
-                document.querySelector('#analytics .stat-card:nth-child(1) p').textContent = totalValidations;
-                document.querySelector('#analytics .stat-card:nth-child(2) p').textContent = todayValidations;
-                document.querySelector('#analytics .stat-card:nth-child(3) p').textContent = `${successRate}%`;
-
-                // Prepare data for weekly chart
-                const lastWeek = [...Array(7)].map((_, i) => {
-                    const d = new Date();
-                    d.setDate(d.getDate() - i);
-                    return d.toDateString();
-                }).reverse();
-
-                const weeklyData = lastWeek.map(date => {
-                    return scans.filter(scan => {
-                        const scanDate = new Date(scan.data.scan.created_at).toDateString();
-                        return scanDate === date && scan.success;
-                    }).length;
-                });
-
-                // Prepare data for hourly chart
-                const hours = [...Array(24)].map((_, i) => i);
-                const hourlyData = hours.map(hour => {
-                    return scans.filter(scan => {
-                        const scanHour = new Date(scan.data.scan.created_at).getHours();
-                        return scanHour === hour && scan.success;
-                    }).length;
-                });
-
-                // Update charts
-                updateValidationChart(lastWeek.map(date => date.split(' ')[0]), weeklyData);
-                updateHourlyChart(hours.map(h => `${h}:00`), hourlyData);
-
-            } catch (error) {
-                console.error('Error updating analytics:', error);
-            }
-        }
-
-        function updateValidationChart(labels, data) {
-            const validationCtx = document.getElementById('validationChart').getContext('2d');
-            if (window.validationChart) {
-                window.validationChart.destroy();
-            }
-            window.validationChart = new Chart(validationCtx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Daily Validations',
-                        data: data,
-                        borderColor: '#10B981',
-                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                        tension: 0.1,
-                        fill: true
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: 'Weekly Validation Trends'
-                        },
-                        legend: {
-                            display: true,
-                            position: 'bottom'
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                stepSize: 1
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        function updateHourlyChart(labels, data) {
-            const hourlyCtx = document.getElementById('hourlyChart').getContext('2d');
-            if (window.hourlyChart) {
-                window.hourlyChart.destroy();
-            }
-            window.hourlyChart = new Chart(hourlyCtx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Validations per Hour',
-                        data: data,
-                        backgroundColor: '#10B981',
-                        borderRadius: 4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: 'Hourly Validation Activity'
-                        },
-                        legend: {
-                            display: true,
-                            position: 'bottom'
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                stepSize: 1
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        // Modify switchTab function to update analytics when switching to analytics tab
-        function switchTab(tabId) {
-            // Hide all content
-            document.querySelectorAll('.admin-content').forEach(content => {
-                content.classList.remove('active');
-            });
-            document.querySelectorAll('.admin-tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
-
-            // Show selected content
-            document.getElementById(tabId).classList.add('active');
-            event.target.classList.add('active');
-
-            // Update analytics if switching to analytics tab
-            if (tabId === 'analytics') {
-                updateAnalytics();
-            }
-        }
-
-        // Add analytics update to DOMContentLoaded
-        document.addEventListener('DOMContentLoaded', function() {
-            // ... existing DOMContentLoaded code ...
-
-            // Initialize analytics if on admin view
-            if (!document.getElementById('admin-view').style.display === 'none') {
-                updateAnalytics();
-            }
-        });
-
-        // Add analytics update after successful scan
-        function onScanSuccess(decodedText, decodedResult) {
-            // ... existing onScanSuccess code ...
-
-            // Update analytics if on admin view
-            if (!document.getElementById('admin-view').style.display === 'none') {
-                updateAnalytics();
-            }
-        }
     </script>
 </body>
 </html>
