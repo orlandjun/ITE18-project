@@ -1114,6 +1114,186 @@
 
         // Add event listener for beforeunload to save statistics
         window.addEventListener('beforeunload', saveStatistics);
+
+        // Add these functions for analytics
+        async function updateAnalytics() {
+            try {
+                const response = await fetch('/student-scan/history');
+                const scans = await response.json();
+                
+                // Calculate total validations
+                const totalValidations = scans.filter(scan => scan.success).length;
+                
+                // Calculate today's validations
+                const today = new Date().toDateString();
+                const todayValidations = scans.filter(scan => {
+                    const scanDate = new Date(scan.data.scan.created_at).toDateString();
+                    return scanDate === today && scan.success;
+                }).length;
+                
+                // Calculate success rate
+                const successRate = scans.length > 0 
+                    ? ((scans.filter(scan => scan.success).length / scans.length) * 100).toFixed(1)
+                    : '0.0';
+
+                // Update statistics cards
+                document.querySelector('#analytics .stat-card:nth-child(1) p').textContent = totalValidations;
+                document.querySelector('#analytics .stat-card:nth-child(2) p').textContent = todayValidations;
+                document.querySelector('#analytics .stat-card:nth-child(3) p').textContent = `${successRate}%`;
+
+                // Prepare data for weekly chart
+                const lastWeek = [...Array(7)].map((_, i) => {
+                    const d = new Date();
+                    d.setDate(d.getDate() - i);
+                    return d.toDateString();
+                }).reverse();
+
+                const weeklyData = lastWeek.map(date => {
+                    return scans.filter(scan => {
+                        const scanDate = new Date(scan.data.scan.created_at).toDateString();
+                        return scanDate === date && scan.success;
+                    }).length;
+                });
+
+                // Prepare data for hourly chart
+                const hours = [...Array(24)].map((_, i) => i);
+                const hourlyData = hours.map(hour => {
+                    return scans.filter(scan => {
+                        const scanHour = new Date(scan.data.scan.created_at).getHours();
+                        return scanHour === hour && scan.success;
+                    }).length;
+                });
+
+                // Update charts
+                updateValidationChart(lastWeek.map(date => date.split(' ')[0]), weeklyData);
+                updateHourlyChart(hours.map(h => `${h}:00`), hourlyData);
+
+            } catch (error) {
+                console.error('Error updating analytics:', error);
+            }
+        }
+
+        function updateValidationChart(labels, data) {
+            const validationCtx = document.getElementById('validationChart').getContext('2d');
+            if (window.validationChart) {
+                window.validationChart.destroy();
+            }
+            window.validationChart = new Chart(validationCtx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Daily Validations',
+                        data: data,
+                        borderColor: '#10B981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        tension: 0.1,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Weekly Validation Trends'
+                        },
+                        legend: {
+                            display: true,
+                            position: 'bottom'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateHourlyChart(labels, data) {
+            const hourlyCtx = document.getElementById('hourlyChart').getContext('2d');
+            if (window.hourlyChart) {
+                window.hourlyChart.destroy();
+            }
+            window.hourlyChart = new Chart(hourlyCtx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Validations per Hour',
+                        data: data,
+                        backgroundColor: '#10B981',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Hourly Validation Activity'
+                        },
+                        legend: {
+                            display: true,
+                            position: 'bottom'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Modify switchTab function to update analytics when switching to analytics tab
+        function switchTab(tabId) {
+            // Hide all content
+            document.querySelectorAll('.admin-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.querySelectorAll('.admin-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // Show selected content
+            document.getElementById(tabId).classList.add('active');
+            event.target.classList.add('active');
+
+            // Update analytics if switching to analytics tab
+            if (tabId === 'analytics') {
+                updateAnalytics();
+            }
+        }
+
+        // Add analytics update to DOMContentLoaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // ... existing DOMContentLoaded code ...
+
+            // Initialize analytics if on admin view
+            if (!document.getElementById('admin-view').style.display === 'none') {
+                updateAnalytics();
+            }
+        });
+
+        // Add analytics update after successful scan
+        function onScanSuccess(decodedText, decodedResult) {
+            // ... existing onScanSuccess code ...
+
+            // Update analytics if on admin view
+            if (!document.getElementById('admin-view').style.display === 'none') {
+                updateAnalytics();
+            }
+        }
     </script>
 </body>
 </html>
