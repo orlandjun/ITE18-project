@@ -231,90 +231,118 @@
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <!-- Scanner View -->
                 <div id="scanner-view" class="view-content">
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        <!-- Scanner Section -->
-                        <div class="scanner-container p-6">
-                            <div class="flex items-center justify-between mb-6">
-                                <h3 class="text-lg font-semibold text-gray-900">QR Scanner</h3>
-                                <div id="scanner-status" class="text-sm text-gray-500"></div>
-                            </div>
-
-                            <div class="controls space-y-4">
-                                <select id="camera-select" class="modern-select w-full rounded-lg border-gray-300 focus:border-green-500 focus:ring focus:ring-green-200">
-                                    <option value="">Select Camera</option>
-                                </select>
-
-                                <div class="button-group">
-                                    <button onclick="requestCameraPermission()" class="modern-button bg-green-500 text-white hover:bg-green-600">
-                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                        </svg>
-                                        Request Permission
-                                    </button>
-
-                                    <button onclick="testCamera()" class="modern-button bg-yellow-500 text-white hover:bg-yellow-600">
-                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                        </svg>
-                                        Test Camera
-                                    </button>
-
-                                    <button onclick="startScanner()" class="modern-button bg-green-500 text-white hover:bg-green-600">
-                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                                        </svg>
-                                        Start Scanner
-                                    </button>
-
-                                    <button onclick="stopScanner()" class="modern-button bg-red-500 text-white hover:bg-red-600">
-                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
-                                        </svg>
-                                        Stop Scanner
-                                    </button>
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- QR Scanner Column -->
+                        <div class="lg:col-span-1">
+                            <div class="scanner-container p-4 bg-white rounded-lg shadow-sm">
+                                <div class="flex items-center justify-between mb-4">
+                                    <h3 class="text-lg font-semibold text-gray-900">QR Scanner</h3>
+                                    <div id="scanner-status" class="status-badge">
+                                        <span class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                                        Ready
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div id="error" class="error hidden"></div>
-                            <div id="reader" class="mt-6"></div>
-                            <div id="result" class="mt-6">No QR Code scanned yet</div>
-                            <div id="debug" class="debug-info"></div>
+                                <div class="controls space-y-3">
+                                    <select id="camera-select" class="modern-select w-full rounded-lg border-gray-300 focus:border-green-500 focus:ring focus:ring-green-200">
+                                        <option value="">Select Camera</option>
+                                    </select>
+
+                                    <div class="button-group flex flex-wrap gap-2">
+                                        <button onclick="requestCameraPermission()" class="modern-button bg-green-500 text-white hover:bg-green-600 flex-1">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                            </svg>
+                                            Permission
+                                        </button>
+
+                                        <button onclick="testCamera()" class="modern-button bg-yellow-500 text-white hover:bg-yellow-600 flex-1">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                            </svg>
+                                            Test
+                                        </button>
+
+                                        <button onclick="startScanner()" class="modern-button bg-green-500 text-white hover:bg-green-600 flex-1">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                                            </svg>
+                                            Start
+                                        </button>
+
+                                        <button onclick="stopScanner()" class="modern-button bg-red-500 text-white hover:bg-red-600 flex-1">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
+                                            </svg>
+                                            Stop
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div id="error" class="error hidden mt-3"></div>
+                                <div id="reader" class="mt-4 rounded-lg overflow-hidden"></div>
+                                <div id="result" class="mt-4 text-center text-gray-600">No QR Code scanned yet</div>
+                                <div id="debug" class="debug-info"></div>
+                            </div>
                         </div>
 
-                        <!-- Validated Students Box -->
-                        <div class="border rounded-lg p-4 bg-white shadow">
-                            <div class="flex justify-between items-center mb-4">
-                                <h3 class="text-lg font-semibold">Validated Students</h3>
-                                <div class="flex space-x-2">
-                                    <button onclick="toggleScanHistory()" class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 flex items-center">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                                        </svg>
-                                        View Scan History
-                                    </button>
-                                    <button onclick="clearValidatedStudents()" class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
-                                        Clear List
-                                    </button>
+                        <!-- Validation Results Column -->
+                        <div class="lg:col-span-2">
+                            <!-- Today's Statistics -->
+                            <div class="grid grid-cols-3 gap-4 mb-6">
+                                <div class="bg-white p-4 rounded-lg shadow-sm">
+                                    <h4 class="text-sm font-medium text-gray-500">Today's Scans</h4>
+                                    <p class="text-2xl font-bold text-green-600" id="today-scans">0</p>
                                 </div>
-                            </div>
-                            
-                            <!-- Validated Students List -->
-                            <div id="validated-students" class="space-y-2 max-h-[200px] overflow-y-auto">
-                                <!-- Validated students will be displayed here -->
+                                <div class="bg-white p-4 rounded-lg shadow-sm">
+                                    <h4 class="text-sm font-medium text-gray-500">Successful</h4>
+                                    <p class="text-2xl font-bold text-green-600" id="successful-scans">0</p>
+                                </div>
+                                <div class="bg-white p-4 rounded-lg shadow-sm">
+                                    <h4 class="text-sm font-medium text-gray-500">Failed</h4>
+                                    <p class="text-2xl font-bold text-red-600" id="failed-scans">0</p>
+                                </div>
                             </div>
 
-                            <!-- Scan History (Hidden by default) -->
-                            <div id="scan-history" class="hidden space-y-2 mt-4 border-t pt-4">
-                                <div class="flex justify-between items-center mb-2">
-                                    <h4 class="font-medium text-gray-700">Scan History</h4>
-                                    <button onclick="refreshScanHistory()" class="text-green-600 hover:text-green-800">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                        </svg>
-                                    </button>
+                            <!-- Validated Students Box -->
+                            <div class="bg-white rounded-lg shadow-sm">
+                                <div class="p-4 border-b">
+                                    <div class="flex justify-between items-center">
+                                        <h3 class="text-lg font-semibold text-gray-900">Validated Students</h3>
+                                        <div class="flex space-x-2">
+                                            <button onclick="toggleScanHistory()" class="px-3 py-1.5 bg-green-500 text-white text-sm rounded hover:bg-green-600 flex items-center">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                                </svg>
+                                                History
+                                            </button>
+                                            <button onclick="clearValidatedStudents()" class="px-3 py-1.5 bg-gray-500 text-white text-sm rounded hover:bg-gray-600">
+                                                Clear
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
-                                <!-- Scan history entries will be displayed here -->
+                                
+                                <!-- Validated Students List -->
+                                <div class="p-4">
+                                    <div id="validated-students" class="space-y-2 max-h-[300px] overflow-y-auto">
+                                        <!-- Validated students will be displayed here -->
+                                    </div>
+
+                                    <!-- Scan History (Hidden by default) -->
+                                    <div id="scan-history" class="hidden space-y-2 mt-4 pt-4 border-t">
+                                        <div class="flex justify-between items-center mb-2">
+                                            <h4 class="font-medium text-gray-700">Recent Scans</h4>
+                                            <button onclick="refreshScanHistory()" class="text-green-600 hover:text-green-800">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        <!-- Scan history entries will be displayed here -->
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -484,6 +512,25 @@
             }
         }
 
+        // Add these functions for statistics
+        let todayScans = 0;
+        let successfulScans = 0;
+        let failedScans = 0;
+
+        function updateStatistics(success = true) {
+            todayScans++;
+            if (success) {
+                successfulScans++;
+            } else {
+                failedScans++;
+            }
+            
+            document.getElementById('today-scans').textContent = todayScans;
+            document.getElementById('successful-scans').textContent = successfulScans;
+            document.getElementById('failed-scans').textContent = failedScans;
+        }
+
+        // Modify the onScanSuccess function to update statistics
         function onScanSuccess(decodedText, decodedResult) {
             console.log(`QR Code detected: ${decodedText}`);
             
@@ -502,6 +549,7 @@
 
             // Basic validation of QR code format
             if (!decodedText.match(/^221-\d{4}-VALID$/)) {
+                updateStatistics(false);
                 document.getElementById('result').innerHTML = `
                     <div class="p-4 bg-red-100 text-red-800 rounded-lg">
                         <div class="flex items-center">
@@ -531,6 +579,7 @@
             })
             .then(response => {
                 if (!response.ok) {
+                    updateStatistics(false);
                     if (response.status === 404) {
                         throw new Error('Invalid QR code or student not found');
                     }
@@ -540,6 +589,7 @@
             })
             .then(data => {
                 if (data.success) {
+                    updateStatistics(true);
                     // Play success sound
                     const audio = new Audio('/sounds/success.mp3');
                     audio.play().catch(e => console.log('Audio play failed:', e));
@@ -571,6 +621,7 @@
                     // Update status badge
                     updateScannerStatus('Ready');
                 } else {
+                    updateStatistics(false);
                     // Play error sound
                     const audio = new Audio('/sounds/error.mp3');
                     audio.play().catch(e => console.log('Audio play failed:', e));
@@ -595,6 +646,7 @@
                 }
             })
             .catch(error => {
+                updateStatistics(false);
                 console.error('Error:', error);
                 // Show error message
                 document.getElementById('result').innerHTML = `
@@ -698,72 +750,154 @@
         // Modified addToScanHistory function
         function addToScanHistory(scanData, checkDuplicate = true) {
             const scanHistory = document.getElementById('scan-history');
+            const validatedStudents = document.getElementById('validated-students');
             
-            // Check for duplicates only when adding new scans
-            if (checkDuplicate) {
-                const existingEntry = scanHistory.querySelector(`[data-student-id="${scanData.data.student.student_id}"]`);
+            if (checkDuplicate && scanData.success) {
+                // Check for existing validation in localStorage
+                const validatedList = JSON.parse(localStorage.getItem('validatedStudents') || '[]');
+                const existingValidation = validatedList.find(v => v.student_id === scanData.data.student.student_id);
                 
-                if (existingEntry) {
-                    // If it's a duplicate validation message, just update the status
-                    if (!scanData.success && scanData.message.includes('already validated')) {
-                        existingEntry.querySelector('.scan-status').innerHTML = `
-                            <span class="text-yellow-600 font-medium">
-                                ⚠️ Already validated for ${scanData.data.semester} semester, ${scanData.data.academic_year}
-                            </span>`;
-                        
-                        // Briefly highlight the existing entry
-                        existingEntry.classList.add('bg-yellow-50');
-                        setTimeout(() => {
-                            existingEntry.classList.remove('bg-yellow-50');
-                        }, 2000);
-                        
-                        return;
+                if (!existingValidation) {
+                    // Add to validated students list
+                    const validationElement = document.createElement('div');
+                    validationElement.className = 'p-4 bg-green-50 rounded-lg border border-green-200 mb-3';
+                    validationElement.innerHTML = `
+                        <div class="flex justify-between items-start">
+                            <div class="flex-grow">
+                                <div class="flex items-center">
+                                    <div class="font-medium text-gray-900 text-lg">${scanData.data.student.name}</div>
+                                    <span class="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Validated</span>
+                                </div>
+                                <div class="text-sm text-gray-600 mt-1">ID: ${scanData.data.student.student_id}</div>
+                                <div class="text-sm text-gray-600">Course: ${scanData.data.student.course}</div>
+                                <div class="text-sm text-gray-600">Year Level: ${scanData.data.student.year_level}</div>
+                                <div class="mt-2 text-sm text-green-600">
+                                    ✓ Validated for ${scanData.data.semester} Semester, ${scanData.data.academic_year}
+                                </div>
+                                <div class="text-xs text-gray-500 mt-1">
+                                    Validated on ${new Date(scanData.data.scan.created_at).toLocaleString()}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    if (validatedStudents.firstChild) {
+                        validatedStudents.insertBefore(validationElement, validatedStudents.firstChild);
+                    } else {
+                        validatedStudents.appendChild(validationElement);
                     }
+
+                    // Update localStorage with more details
+                    validatedList.push({
+                        student_id: scanData.data.student.student_id,
+                        name: scanData.data.student.name,
+                        course: scanData.data.student.course,
+                        year_level: scanData.data.student.year_level,
+                        semester: scanData.data.semester,
+                        academic_year: scanData.data.academic_year,
+                        timestamp: scanData.data.scan.created_at || new Date().toISOString()
+                    });
+                    localStorage.setItem('validatedStudents', JSON.stringify(validatedList));
                 }
             }
 
-            // Create new entry
-            const scanElement = document.createElement('div');
-            scanElement.className = 'scan-history-item';
-            scanElement.setAttribute('data-student-id', scanData.data.student.student_id);
-            
-            scanElement.innerHTML = `
-                <div class="flex justify-between items-start">
-                    <div>
-                        <div class="font-medium text-gray-900">
-                            ${scanData.data.student.name}
-                        </div>
-                        <div class="text-sm text-gray-500">
-                            ID: ${scanData.data.student.student_id}
-                        </div>
-                        <div class="text-sm text-gray-500">
-                            Course: ${scanData.data.student.course}
-                        </div>
-                        <div class="text-sm text-gray-500">
-                            Year Level: ${scanData.data.student.year_level}
-                        </div>
-                        <div class="text-sm text-gray-500">
-                            Scanned: ${new Date(scanData.data.scan.created_at).toLocaleString()}
-                        </div>
-                        <div class="scan-status mt-2">
-                            <span class="text-green-600 font-medium">
-                                ✓ Validated for ${scanData.data.semester} semester, ${scanData.data.academic_year}
-                            </span>
+            // Add to scan history if visible
+            if (!scanHistory.classList.contains('hidden')) {
+                const scanElement = document.createElement('div');
+                scanElement.className = 'scan-history-item mb-3';
+                scanElement.setAttribute('data-student-id', scanData.data.student.student_id);
+                
+                scanElement.innerHTML = `
+                    <div class="flex justify-between items-start p-4 bg-white rounded-lg border border-gray-200">
+                        <div class="flex-grow">
+                            <div class="flex items-center justify-between">
+                                <div class="font-medium text-gray-900">${scanData.data.student.name}</div>
+                                <span class="px-2 py-1 ${scanData.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'} text-xs rounded-full">
+                                    ${scanData.success ? 'Validated' : 'Failed'}
+                                </span>
+                            </div>
+                            <div class="text-sm text-gray-600 mt-1">ID: ${scanData.data.student.student_id}</div>
+                            <div class="text-sm text-gray-600">Course: ${scanData.data.student.course}</div>
+                            <div class="text-sm text-gray-600">Year Level: ${scanData.data.student.year_level}</div>
+                            ${scanData.success ? `
+                                <div class="mt-2 text-sm text-green-600">
+                                    ✓ Validated for ${scanData.data.semester} Semester, ${scanData.data.academic_year}
+                                </div>
+                            ` : `
+                                <div class="mt-2 text-sm text-red-600">
+                                    ✗ ${scanData.message}
+                                </div>
+                            `}
+                            <div class="text-xs text-gray-500 mt-1">
+                                Scanned on ${new Date(scanData.data.scan.created_at).toLocaleString()}
+                            </div>
                         </div>
                     </div>
-                    <div class="text-xs text-gray-500">
-                        ${scanData.data.scan.status.toUpperCase()}
-                    </div>
-                </div>
-            `;
-            
-            // Add to the top of the history
-            if (scanHistory.firstChild) {
-                scanHistory.insertBefore(scanElement, scanHistory.firstChild);
-            } else {
-                scanHistory.appendChild(scanElement);
+                `;
+                
+                if (scanHistory.firstChild) {
+                    scanHistory.insertBefore(scanElement, scanHistory.firstChild);
+                } else {
+                    scanHistory.appendChild(scanElement);
+                }
             }
         }
+
+        // Load validated students from localStorage and scan history
+        async function loadValidatedStudents() {
+            const validatedStudents = document.getElementById('validated-students');
+            validatedStudents.innerHTML = ''; // Clear existing list
+            
+            try {
+                // Fetch scan history from server
+                const response = await fetch('/student-scan/history');
+                const scans = await response.json();
+                
+                // Filter successful validations and sort by date
+                const validatedScans = scans
+                    .filter(scan => scan.success)
+                    .sort((a, b) => new Date(b.data.scan.created_at) - new Date(a.data.scan.created_at));
+                
+                // Display each validated student
+                validatedScans.forEach(scan => {
+                    const validationElement = document.createElement('div');
+                    validationElement.className = 'p-4 bg-green-50 rounded-lg border border-green-200 mb-3';
+                    validationElement.innerHTML = `
+                        <div class="flex justify-between items-start">
+                            <div class="flex-grow">
+                                <div class="flex items-center">
+                                    <div class="font-medium text-gray-900 text-lg">${scan.data.student.name}</div>
+                                    <span class="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Validated</span>
+                                </div>
+                                <div class="text-sm text-gray-600 mt-1">ID: ${scan.data.student.student_id}</div>
+                                <div class="text-sm text-gray-600">Course: ${scan.data.student.course}</div>
+                                <div class="text-sm text-gray-600">Year Level: ${scan.data.student.year_level}</div>
+                                <div class="mt-2 text-sm text-green-600">
+                                    ✓ Validated for ${scan.data.semester} Semester, ${scan.data.academic_year}
+                                </div>
+                                <div class="text-xs text-gray-500 mt-1">
+                                    Validated on ${new Date(scan.data.scan.created_at).toLocaleString()}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    validatedStudents.appendChild(validationElement);
+                });
+            } catch (error) {
+                console.error('Error loading validated students:', error);
+                validatedStudents.innerHTML = `
+                    <div class="p-4 bg-red-50 text-red-800 rounded-lg">
+                        Error loading validated students. Please try again.
+                    </div>
+                `;
+            }
+        }
+
+        // Update DOMContentLoaded to use new loading function
+        document.addEventListener('DOMContentLoaded', function() {
+            // ... existing DOMContentLoaded code ...
+            loadValidatedStudents(); // Load validated students from scan history
+        });
 
         // Add this new function for clearing history
         function clearHistory() {
@@ -942,99 +1076,44 @@
             loadScanHistory();
         }
 
-        // Modified addToScanHistory function
-        function addToScanHistory(scanData, checkDuplicate = true) {
-            const scanHistory = document.getElementById('scan-history');
-            const validatedStudents = document.getElementById('validated-students');
+        // Load statistics from localStorage on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // ... existing DOMContentLoaded code ...
+
+            // Load statistics
+            const stats = JSON.parse(localStorage.getItem('scanStats') || '{"today":"","todayScans":0,"successfulScans":0,"failedScans":0}');
+            const today = new Date().toDateString();
             
-            if (checkDuplicate) {
-                // Check for existing validation in localStorage
-                const validatedList = JSON.parse(localStorage.getItem('validatedStudents') || '[]');
-                const existingValidation = validatedList.find(v => v.student_id === scanData.data.student.student_id);
-                
-                if (!existingValidation) {
-                    // Add to validated students list
-                    const validationElement = document.createElement('div');
-                    validationElement.className = 'p-3 bg-green-50 rounded-lg border border-green-200';
-                    validationElement.innerHTML = `
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <div class="font-medium text-gray-900">${scanData.data.student.name}</div>
-                                <div class="text-sm text-gray-500">ID: ${scanData.data.student.student_id}</div>
-                                <div class="text-sm text-gray-500">Course: ${scanData.data.student.course}</div>
-                                <div class="text-xs text-green-600 mt-1">✓ Validated</div>
-                            </div>
-                            <div class="text-xs text-gray-500">
-                                ${new Date().toLocaleTimeString()}
-                            </div>
-                        </div>
-                    `;
-                    
-                    if (validatedStudents.firstChild) {
-                        validatedStudents.insertBefore(validationElement, validatedStudents.firstChild);
-                    } else {
-                        validatedStudents.appendChild(validationElement);
-                    }
-
-                    // Update localStorage
-                    validatedList.push({
-                        student_id: scanData.data.student.student_id,
-                        name: scanData.data.student.name,
-                        timestamp: new Date().toISOString()
-                    });
-                    localStorage.setItem('validatedStudents', JSON.stringify(validatedList));
-                }
+            if (stats.today !== today) {
+                // Reset stats for new day
+                todayScans = 0;
+                successfulScans = 0;
+                failedScans = 0;
+            } else {
+                todayScans = stats.todayScans;
+                successfulScans = stats.successfulScans;
+                failedScans = stats.failedScans;
             }
+            
+            // Update display
+            document.getElementById('today-scans').textContent = todayScans;
+            document.getElementById('successful-scans').textContent = successfulScans;
+            document.getElementById('failed-scans').textContent = failedScans;
+        });
 
-            // Add to scan history if visible
-            if (!scanHistory.classList.contains('hidden')) {
-                const scanElement = document.createElement('div');
-                scanElement.className = 'scan-history-item';
-                scanElement.setAttribute('data-student-id', scanData.data.student.student_id);
-                
-                scanElement.innerHTML = `
-                    <div class="flex justify-between items-start p-3 bg-white rounded-lg border border-gray-200">
-                        <div>
-                            <div class="font-medium text-gray-900">${scanData.data.student.name}</div>
-                            <div class="text-sm text-gray-500">ID: ${scanData.data.student.student_id}</div>
-                            <div class="text-sm text-gray-500">Course: ${scanData.data.student.course}</div>
-                            <div class="text-sm text-gray-500">Scanned: ${new Date(scanData.data.scan.created_at).toLocaleString()}</div>
-                        </div>
-                        <div class="text-xs text-gray-500">${scanData.data.scan.status.toUpperCase()}</div>
-                    </div>
-                `;
-                
-                if (scanHistory.firstChild) {
-                    scanHistory.insertBefore(scanElement, scanHistory.firstChild);
-                } else {
-                    scanHistory.appendChild(scanElement);
-                }
-            }
+        // Save statistics to localStorage when updated
+        function saveStatistics() {
+            const stats = {
+                today: new Date().toDateString(),
+                todayScans,
+                successfulScans,
+                failedScans
+            };
+            localStorage.setItem('scanStats', JSON.stringify(stats));
         }
 
-        // Load validated students from localStorage on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            const validatedList = JSON.parse(localStorage.getItem('validatedStudents') || '[]');
-            const validatedStudents = document.getElementById('validated-students');
-            
-            validatedList.forEach(validation => {
-                const validationElement = document.createElement('div');
-                validationElement.className = 'p-3 bg-green-50 rounded-lg border border-green-200';
-                validationElement.innerHTML = `
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <div class="font-medium text-gray-900">${validation.name}</div>
-                            <div class="text-sm text-gray-500">ID: ${validation.student_id}</div>
-                            <div class="text-xs text-green-600 mt-1">✓ Validated</div>
-                        </div>
-                        <div class="text-xs text-gray-500">
-                            ${new Date(validation.timestamp).toLocaleTimeString()}
-                        </div>
-                    </div>
-                `;
-                validatedStudents.appendChild(validationElement);
-            });
-        });
+        // Add event listener for beforeunload to save statistics
+        window.addEventListener('beforeunload', saveStatistics);
     </script>
 </body>
 </html>
