@@ -282,11 +282,39 @@
                             <div id="debug" class="debug-info"></div>
                         </div>
 
-                        <!-- Scan History Section -->
-                        <div class="border rounded-lg p-4">
-                            <h3 class="text-lg font-semibold mb-4">Recent Scans</h3>
-                            <div id="scan-history" class="space-y-2 max-h-[400px] overflow-y-auto">
-                                <!-- Scan history will be populated here -->
+                        <!-- Validated Students Box -->
+                        <div class="border rounded-lg p-4 bg-white shadow">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-lg font-semibold">Validated Students</h3>
+                                <div class="flex space-x-2">
+                                    <button onclick="toggleScanHistory()" class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 flex items-center">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                        View Scan History
+                                    </button>
+                                    <button onclick="clearValidatedStudents()" class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
+                                        Clear List
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Validated Students List -->
+                            <div id="validated-students" class="space-y-2 max-h-[200px] overflow-y-auto">
+                                <!-- Validated students will be displayed here -->
+                            </div>
+
+                            <!-- Scan History (Hidden by default) -->
+                            <div id="scan-history" class="hidden space-y-2 mt-4 border-t pt-4">
+                                <div class="flex justify-between items-center mb-2">
+                                    <h4 class="font-medium text-gray-700">Scan History</h4>
+                                    <button onclick="refreshScanHistory()" class="text-green-600 hover:text-green-800">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                        </svg>
+                                    </button>
+                                </div>
+                                <!-- Scan history entries will be displayed here -->
                             </div>
                         </div>
                     </div>
@@ -891,6 +919,121 @@
             if (files.length > 0) {
                 document.getElementById('file-upload').files = files;
             }
+        });
+
+        // Add these new functions
+        function toggleScanHistory() {
+            const scanHistory = document.getElementById('scan-history');
+            if (scanHistory.classList.contains('hidden')) {
+                loadScanHistory();
+                scanHistory.classList.remove('hidden');
+            } else {
+                scanHistory.classList.add('hidden');
+            }
+        }
+
+        function clearValidatedStudents() {
+            const validatedStudents = document.getElementById('validated-students');
+            validatedStudents.innerHTML = '';
+            localStorage.removeItem('validatedStudents');
+        }
+
+        function refreshScanHistory() {
+            loadScanHistory();
+        }
+
+        // Modified addToScanHistory function
+        function addToScanHistory(scanData, checkDuplicate = true) {
+            const scanHistory = document.getElementById('scan-history');
+            const validatedStudents = document.getElementById('validated-students');
+            
+            if (checkDuplicate) {
+                // Check for existing validation in localStorage
+                const validatedList = JSON.parse(localStorage.getItem('validatedStudents') || '[]');
+                const existingValidation = validatedList.find(v => v.student_id === scanData.data.student.student_id);
+                
+                if (!existingValidation) {
+                    // Add to validated students list
+                    const validationElement = document.createElement('div');
+                    validationElement.className = 'p-3 bg-green-50 rounded-lg border border-green-200';
+                    validationElement.innerHTML = `
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <div class="font-medium text-gray-900">${scanData.data.student.name}</div>
+                                <div class="text-sm text-gray-500">ID: ${scanData.data.student.student_id}</div>
+                                <div class="text-sm text-gray-500">Course: ${scanData.data.student.course}</div>
+                                <div class="text-xs text-green-600 mt-1">✓ Validated</div>
+                            </div>
+                            <div class="text-xs text-gray-500">
+                                ${new Date().toLocaleTimeString()}
+                            </div>
+                        </div>
+                    `;
+                    
+                    if (validatedStudents.firstChild) {
+                        validatedStudents.insertBefore(validationElement, validatedStudents.firstChild);
+                    } else {
+                        validatedStudents.appendChild(validationElement);
+                    }
+
+                    // Update localStorage
+                    validatedList.push({
+                        student_id: scanData.data.student.student_id,
+                        name: scanData.data.student.name,
+                        timestamp: new Date().toISOString()
+                    });
+                    localStorage.setItem('validatedStudents', JSON.stringify(validatedList));
+                }
+            }
+
+            // Add to scan history if visible
+            if (!scanHistory.classList.contains('hidden')) {
+                const scanElement = document.createElement('div');
+                scanElement.className = 'scan-history-item';
+                scanElement.setAttribute('data-student-id', scanData.data.student.student_id);
+                
+                scanElement.innerHTML = `
+                    <div class="flex justify-between items-start p-3 bg-white rounded-lg border border-gray-200">
+                        <div>
+                            <div class="font-medium text-gray-900">${scanData.data.student.name}</div>
+                            <div class="text-sm text-gray-500">ID: ${scanData.data.student.student_id}</div>
+                            <div class="text-sm text-gray-500">Course: ${scanData.data.student.course}</div>
+                            <div class="text-sm text-gray-500">Scanned: ${new Date(scanData.data.scan.created_at).toLocaleString()}</div>
+                        </div>
+                        <div class="text-xs text-gray-500">${scanData.data.scan.status.toUpperCase()}</div>
+                    </div>
+                `;
+                
+                if (scanHistory.firstChild) {
+                    scanHistory.insertBefore(scanElement, scanHistory.firstChild);
+                } else {
+                    scanHistory.appendChild(scanElement);
+                }
+            }
+        }
+
+        // Load validated students from localStorage on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const validatedList = JSON.parse(localStorage.getItem('validatedStudents') || '[]');
+            const validatedStudents = document.getElementById('validated-students');
+            
+            validatedList.forEach(validation => {
+                const validationElement = document.createElement('div');
+                validationElement.className = 'p-3 bg-green-50 rounded-lg border border-green-200';
+                validationElement.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="font-medium text-gray-900">${validation.name}</div>
+                            <div class="text-sm text-gray-500">ID: ${validation.student_id}</div>
+                            <div class="text-xs text-green-600 mt-1">✓ Validated</div>
+                        </div>
+                        <div class="text-xs text-gray-500">
+                            ${new Date(validation.timestamp).toLocaleTimeString()}
+                        </div>
+                    </div>
+                `;
+                validatedStudents.appendChild(validationElement);
+            });
         });
     </script>
 </body>
