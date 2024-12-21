@@ -730,7 +730,7 @@
             document.getElementById('failed-scans').textContent = failedScans;
         }
 
-        // Add to scan history
+        // Add to scan history and update validated students
         function addToScanHistory(scanData) {
             if (!scanData.success) return;
 
@@ -757,56 +757,67 @@
                 </div>
             `;
             
-            scanHistory.insertBefore(historyEntry, scanHistory.firstChild);
-
-            // Add to validated students if not already present
-            const studentId = scanData.data.student.student_id;
-            if (!document.querySelector(`[data-student-id="${studentId}"]`)) {
-                const validationEntry = document.createElement('div');
-                validationEntry.className = 'p-4 bg-green-50 rounded-lg border border-green-200 mb-3';
-                validationEntry.setAttribute('data-student-id', studentId);
-                validationEntry.innerHTML = `
-                    <div class="flex justify-between items-start">
-                        <div class="flex-grow">
-                            <div class="flex items-center">
-                                <div class="font-medium text-gray-900 text-lg">${scanData.data.student.name}</div>
-                                <span class="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Validated</span>
-                            </div>
-                            <div class="text-sm text-gray-600 mt-1">ID: ${scanData.data.student.student_id}</div>
-                            <div class="text-sm text-gray-600">Course: ${scanData.data.student.course}</div>
-                            <div class="text-sm text-gray-600">Year Level: ${scanData.data.student.year_level}</div>
-                            <div class="mt-2 text-sm text-green-600">
-                                ✓ Validated for ${scanData.data.semester} Semester, ${scanData.data.academic_year}
-                            </div>
-                            <div class="text-xs text-gray-500 mt-1">
-                                Validated on ${new Date().toLocaleString()}
-                            </div>
-                        </div>
-                    </div>
-                `;
-                
-                validatedStudents.insertBefore(validationEntry, validatedStudents.firstChild);
+            // Add new scan to the top of history
+            if (scanHistory.firstChild) {
+                scanHistory.insertBefore(historyEntry, scanHistory.firstChild);
+            } else {
+                scanHistory.appendChild(historyEntry);
             }
+
+            // Refresh validated students list to ensure it's up to date
+            loadValidatedStudents();
         }
 
-        // Load scan history
+        // Load scan history from database
         function loadScanHistory() {
             fetch('/student-scan/history')
                 .then(response => response.json())
                 .then(data => {
                     const scanHistory = document.getElementById('scan-history');
-                    const validatedStudents = document.getElementById('validated-students');
+                    scanHistory.innerHTML = ''; // Clear existing entries
                     
-                    // Clear existing entries
-                    scanHistory.innerHTML = '';
-                    validatedStudents.innerHTML = '';
+                    if (!Array.isArray(data) || data.length === 0) {
+                        scanHistory.innerHTML = `
+                            <div class="p-4 bg-gray-50 text-gray-600 rounded-lg text-center">
+                                No scan history available.
+                            </div>
+                        `;
+                        return;
+                    }
+                    
+                    // Sort scans by date (newest first)
+                    data.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
                     
                     // Add each scan to history
                     data.forEach(scan => {
-                        addToScanHistory({
-                            success: true,
-                            data: scan
-                        });
+                        if (!scan.student) return; // Skip if no student data
+                        
+                        const historyEntry = document.createElement('div');
+                        historyEntry.className = 'p-4 bg-white rounded-lg shadow mb-3';
+                        historyEntry.innerHTML = `
+                            <div class="flex justify-between items-start">
+                                <div class="flex-grow">
+                                    <div class="flex items-center">
+                                        <div class="font-medium text-gray-900">${scan.student.name}</div>
+                                        <span class="ml-2 px-2 py-1 ${scan.status === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'} text-xs rounded-full">
+                                            ${scan.status === 'success' ? 'Validated' : 'Failed'}
+                                        </span>
+                                    </div>
+                                    <div class="text-sm text-gray-600 mt-1">ID: ${scan.student.student_id}</div>
+                                    <div class="text-sm text-gray-600">Course: ${scan.student.course}</div>
+                                    <div class="text-sm text-gray-600">Year Level: ${scan.student.year_level}</div>
+                                    <div class="mt-2 text-xs text-gray-500">
+                                        Scanned on ${new Date(scan.created_at).toLocaleString()}
+                                    </div>
+                                    ${scan.message ? `
+                                        <div class="mt-1 text-sm ${scan.status === 'success' ? 'text-green-600' : 'text-red-600'}">
+                                            ${scan.message}
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        `;
+                        scanHistory.appendChild(historyEntry);
                     });
                 })
                 .catch(error => {
@@ -814,6 +825,84 @@
                     document.getElementById('scan-history').innerHTML = `
                         <div class="p-4 bg-red-50 text-red-800 rounded-lg">
                             Error loading scan history. Please refresh the page.
+                        </div>
+                    `;
+                });
+        }
+
+        // Load validated students from database
+        function loadValidatedStudents() {
+            fetch('/student-scan/validated')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    const validatedStudents = document.getElementById('validated-students');
+                    validatedStudents.innerHTML = ''; // Clear existing entries
+                    
+                    if (!Array.isArray(data) || data.length === 0) {
+                        validatedStudents.innerHTML = `
+                            <div class="p-4 bg-gray-50 text-gray-600 rounded-lg text-center">
+                                No validated students yet.
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    // Get unique students (latest successful validation for each student)
+                    const uniqueStudents = data.reduce((acc, current) => {
+                        if (!current.student || current.status !== 'success') return acc;
+                        
+                        const existingIndex = acc.findIndex(item => item.student.student_id === current.student.student_id);
+                        if (existingIndex === -1) {
+                            return [...acc, current];
+                        }
+                        
+                        // Replace if current scan is newer
+                        if (new Date(current.created_at) > new Date(acc[existingIndex].created_at)) {
+                            acc[existingIndex] = current;
+                        }
+                        return acc;
+                    }, []);
+
+                    // Sort by most recent validation
+                    uniqueStudents.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+                    // Add each validated student
+                    uniqueStudents.forEach(scan => {
+                        const validationEntry = document.createElement('div');
+                        validationEntry.className = 'p-4 bg-green-50 rounded-lg border border-green-200 mb-3';
+                        validationEntry.setAttribute('data-student-id', scan.student.student_id);
+                        validationEntry.innerHTML = `
+                            <div class="flex justify-between items-start">
+                                <div class="flex-grow">
+                                    <div class="flex items-center">
+                                        <div class="font-medium text-gray-900 text-lg">${scan.student.name}</div>
+                                        <span class="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Validated</span>
+                                    </div>
+                                    <div class="text-sm text-gray-600 mt-1">ID: ${scan.student.student_id}</div>
+                                    <div class="text-sm text-gray-600">Course: ${scan.student.course}</div>
+                                    <div class="text-sm text-gray-600">Year Level: ${scan.student.year_level}</div>
+                                    <div class="mt-2 text-sm text-green-600">
+                                        ${scan.message || '✓ Successfully validated'}
+                                    </div>
+                                    <div class="text-xs text-gray-500 mt-1">
+                                        Last validated on ${new Date(scan.created_at).toLocaleString()}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        validatedStudents.appendChild(validationEntry);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading validated students:', error);
+                    document.getElementById('validated-students').innerHTML = `
+                        <div class="p-4 bg-red-50 text-red-800 rounded-lg">
+                            Error loading validated students. Please refresh the page.
                         </div>
                     `;
                 });
@@ -827,6 +916,7 @@
             }
             updateScannerStatus('Ready');
             loadScanHistory();
+            loadValidatedStudents();
         });
     </script>
 </body>

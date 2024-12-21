@@ -21,6 +21,7 @@ Route::middleware('auth')->group(function () {
 
 Route::post('/student-scan', [StudentScanController::class, 'store'])->name('student.scan');
 Route::get('/student-scan/history', [StudentScanController::class, 'getHistory'])->name('student.scan.history');
+Route::get('/student-scan/validated', [StudentScanController::class, 'getValidated'])->name('student.scan.validated');
 
 // Admin Routes
 Route::middleware(['auth'])->group(function () {

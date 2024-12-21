@@ -21,8 +21,6 @@ class StudentScan extends Model
         'updated_at' => 'datetime'
     ];
 
-    protected $with = ['student'];
-
     public function student()
     {
         return $this->belongsTo(Student::class, 'student_id', 'student_id');

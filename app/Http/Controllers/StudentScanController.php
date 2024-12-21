@@ -106,40 +106,57 @@ class StudentScanController extends Controller
         }
     }
 
+    /**
+     * Get validated students with their latest scan
+     */
+    public function getValidated()
+    {
+        $validatedScans = \App\Models\StudentScan::with('student')
+            ->where('status', 'success')
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($scan) {
+                return [
+                    'id' => $scan->id,
+                    'student' => [
+                        'student_id' => $scan->student->student_id,
+                        'name' => $scan->student->name,
+                        'course' => $scan->student->course,
+                        'year_level' => $scan->student->year_level,
+                    ],
+                    'status' => $scan->status,
+                    'message' => $scan->message,
+                    'created_at' => $scan->created_at,
+                ];
+            });
+
+        return response()->json($validatedScans);
+    }
+
+    /**
+     * Get scan history with student details
+     */
     public function getHistory()
     {
-        try {
-            $scans = StudentScan::with('student')
-                ->orderBy('created_at', 'desc')
-                ->get()
-                ->map(function ($scan) {
-                    $student = $scan->student;
-                    if (!$student) {
-                        return null;
-                    }
-                    
-                    return [
-                        'success' => $scan->status === 'success',
-                        'message' => $scan->message,
-                        'data' => [
-                            'student' => $student,
-                            'scan' => $scan,
-                            'semester' => 'First',
-                            'academic_year' => '2023-2024'
-                        ]
-                    ];
-                })
-                ->filter()
-                ->values();
+        $scans = \App\Models\StudentScan::with('student')
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($scan) {
+                return [
+                    'id' => $scan->id,
+                    'student' => [
+                        'student_id' => $scan->student->student_id,
+                        'name' => $scan->student->name,
+                        'course' => $scan->student->course,
+                        'year_level' => $scan->student->year_level,
+                    ],
+                    'status' => $scan->status,
+                    'message' => $scan->message,
+                    'created_at' => $scan->created_at,
+                ];
+            });
 
-            return response()->json($scans);
-        } catch (\Exception $e) {
-            Log::error('History Error: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Error fetching history'
-            ], 500);
-        }
+        return response()->json($scans);
     }
 
     public function show(StudentScan $scan)
