@@ -440,12 +440,17 @@
         // Core scanner variables
         let html5QrcodeScanner = null;
         let hasPermission = false;
+        let isScanning = false;
+        let scanTimeout = null;
 
         // Request camera permission explicitly
         async function requestCameraPermission() {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: true,
+                    video: {
+                        facingMode: "environment",
+                        focusMode: "continuous"
+                    },
                     audio: false
                 });
                 
@@ -501,15 +506,17 @@
                 // Stop any existing scanner
                 if (html5QrcodeScanner) {
                     await html5QrcodeScanner.stop();
+                    html5QrcodeScanner = null;
                 }
 
                 // Create new scanner instance
                 const html5Qrcode = new Html5Qrcode("reader");
                 html5QrcodeScanner = html5Qrcode;
 
+                // Optimized scanner configuration
                 const config = {
-                    fps: 30,
-                    qrbox: { width: 300, height: 300 },
+                    fps: 10, // Lower FPS for better performance
+                    qrbox: { width: 250, height: 250 },
                     aspectRatio: 1.0,
                     formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ],
                     videoConstraints: {
@@ -518,6 +525,9 @@
                         height: { min: 480, ideal: 720, max: 1080 },
                         facingMode: "environment",
                         focusMode: "continuous"
+                    },
+                    experimentalFeatures: {
+                        useBarCodeDetectorIfSupported: true
                     }
                 };
 
@@ -529,12 +539,24 @@
                     onScanFailure
                 );
 
+                isScanning = true;
                 updateScannerStatus('Scanning');
                 document.getElementById('error').classList.add('hidden');
-                document.getElementById('result').innerHTML = 'Scanner ready. Position QR code in the frame.';
+                document.getElementById('result').innerHTML = `
+                    <div class="p-4 bg-blue-50 text-blue-800 rounded-lg">
+                        <div class="flex items-center">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                            </svg>
+                            Scanner ready. Position QR code in the frame.
+                        </div>
+                    </div>
+                `;
             } catch (error) {
+                isScanning = false;
                 document.getElementById('error').classList.remove('hidden');
                 document.getElementById('error').innerText = `Scanner Error: ${error.message}`;
+                updateScannerStatus('Error');
             }
         }
 
@@ -542,9 +564,20 @@
         async function stopScanner() {
             try {
                 if (html5QrcodeScanner) {
+                    isScanning = false;
                     await html5QrcodeScanner.stop();
+                    html5QrcodeScanner = null;
                     document.getElementById('reader').innerHTML = '';
-                    document.getElementById('result').innerHTML = 'Scanner stopped';
+                    document.getElementById('result').innerHTML = `
+                        <div class="p-4 bg-gray-50 text-gray-600 rounded-lg">
+                            <div class="flex items-center">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                                Scanner stopped
+                            </div>
+                        </div>
+                    `;
                     document.getElementById('error').classList.add('hidden');
                     updateScannerStatus('Ready');
                 }
@@ -554,19 +587,51 @@
             }
         }
 
-        // Handle successful QR code scan
+        // Handle successful QR code scan with debounce
         function onScanSuccess(qrCodeMessage) {
+            if (!isScanning) return; // Prevent scanning if stopped
+            
+            // Clear existing timeout
+            if (scanTimeout) {
+                clearTimeout(scanTimeout);
+            }
+
+            // Set new timeout to debounce scans
+            scanTimeout = setTimeout(() => {
+                processQrCode(qrCodeMessage);
+            }, 500); // 500ms debounce
+        }
+
+        // Process QR code data
+        async function processQrCode(qrCodeMessage) {
             // Basic validation of QR code format (221-XXXX-VALID)
             if (!qrCodeMessage.match(/^221-\d{4}-VALID$/)) {
-                return; // Silently ignore invalid formats
+                // Play error sound
+                const errorAudio = new Audio('/sounds/error.mp3');
+                errorAudio.play().catch(e => console.log('Audio play failed:', e));
+
+                document.getElementById('result').innerHTML = `
+                    <div class="p-4 bg-red-50 text-red-800 rounded-lg">
+                        <div class="flex items-center">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                            <span class="font-medium">Invalid QR Code Format</span>
+                        </div>
+                        <div class="mt-2 text-sm">
+                            The QR code format is incorrect. Expected format: 221-XXXX-VALID
+                        </div>
+                    </div>
+                `;
+                return;
             }
 
             // Pause scanner to prevent duplicate scans
             if (html5QrcodeScanner) {
-                html5QrcodeScanner.pause();
+                html5QrcodeScanner.pause(true);
             }
 
-            // Play success sound
+            // Play scan sound
             const audio = new Audio('/sounds/beep.mp3');
             audio.play().catch(e => console.log('Audio play failed:', e));
 
@@ -578,113 +643,155 @@
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
-                        Processing scan...
+                        Validating QR Code...
                     </div>
                 </div>
             `;
 
-            // Send QR code data to server
-            fetch('/student-scan', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                },
-                body: JSON.stringify({ qr_data: qrCodeMessage })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Update statistics
-                    updateStatistics(true);
-                    
-                    // Show success message with student info
-                    document.getElementById('result').innerHTML = `
-                        <div class="p-4 bg-green-50 text-green-800 rounded-lg">
-                            <div class="flex items-center">
-                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                </svg>
-                                <span class="font-medium">Success!</span>
-                            </div>
-                            <div class="mt-2">
-                                <p class="text-sm font-medium">Student Information:</p>
-                                <ul class="mt-1 text-sm">
-                                    <li>Name: ${data.data.student.name}</li>
-                                    <li>ID: ${data.data.student.student_id}</li>
-                                    <li>Course: ${data.data.student.course}</li>
-                                    <li>Year Level: ${data.data.student.year_level}</li>
-                                </ul>
-                                <p class="mt-2 text-sm text-green-600">
-                                    ✓ Validated for ${data.data.semester} Semester, ${data.data.academic_year}
-                                </p>
-                            </div>
-                        </div>
-                    `;
+            try {
+                // Create a timeout promise
+                const timeoutPromise = new Promise((_, reject) => {
+                    setTimeout(() => reject(new Error('Timeout')), 6000); // 6 seconds timeout
+                });
 
-                    // Add to scan history
-                    addToScanHistory(data);
+                // Create the fetch promise
+                const fetchPromise = fetch('/student-scan', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: JSON.stringify({ qr_data: qrCodeMessage })
+                });
 
-                    // Resume scanner after success
-                    setTimeout(() => {
-                        if (html5QrcodeScanner) {
-                            html5QrcodeScanner.resume();
-                        }
-                    }, 1500);
-                } else {
-                    // Play error sound
-                    const errorAudio = new Audio('/sounds/error.mp3');
-                    errorAudio.play().catch(e => console.log('Audio play failed:', e));
+                // Race between fetch and timeout
+                const response = await Promise.race([fetchPromise, timeoutPromise]);
 
-                    // Show error message
-                    document.getElementById('result').innerHTML = `
-                        <div class="p-4 bg-red-50 text-red-800 rounded-lg">
-                            <div class="flex items-center">
-                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                </svg>
-                                <span class="font-medium">Invalid QR Code</span>
-                            </div>
-                            <div class="mt-2 text-sm">
-                                ${data.message}
-                            </div>
-                        </div>
-                    `;
-
-                    // Update statistics
-                    updateStatistics(false);
-
-                    // Resume scanner after error
-                    setTimeout(() => {
-                        if (html5QrcodeScanner) {
-                            html5QrcodeScanner.resume();
-                        }
-                    }, 1000);
+                if (!response.ok) {
+                    throw new Error(response.status === 404 ? 'Student not found' : 'Network response was not ok');
                 }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                document.getElementById('result').innerHTML = `
-                    <div class="p-4 bg-red-50 text-red-800 rounded-lg">
-                        <div class="flex items-center">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                            <span class="font-medium">Error</span>
-                        </div>
-                        <div class="mt-2 text-sm">
-                            Failed to process QR code. Please try again.
-                        </div>
-                    </div>
-                `;
 
-                // Resume scanner after error
+                const data = await response.json();
+
+                if (data.success) {
+                    handleSuccessfulScan(data);
+                } else {
+                    handleFailedScan(data.message);
+                }
+            } catch (error) {
+                if (error.message === 'Timeout') {
+                    handleScanError({
+                        message: 'Timeout',
+                        title: 'Scan Timeout',
+                        description: "There's an error scanning your QR code. Does the student exist?",
+                        hint: 'Please try scanning again or verify that the student is registered in the system.'
+                    });
+                } else {
+                    handleScanError(error);
+                }
+            } finally {
+                // Resume scanner after delay
                 setTimeout(() => {
-                    if (html5QrcodeScanner) {
+                    if (html5QrcodeScanner && isScanning) {
                         html5QrcodeScanner.resume();
                     }
-                }, 1000);
-            });
+                }, 2000);
+            }
+        }
+
+        // Handle successful scan
+        function handleSuccessfulScan(data) {
+            updateStatistics(true);
+            
+            document.getElementById('result').innerHTML = `
+                <div class="p-4 bg-green-50 text-green-800 rounded-lg">
+                    <div class="flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        <span class="font-medium">Validation Successful!</span>
+                    </div>
+                    <div class="mt-2">
+                        <p class="text-sm font-medium">Student Information:</p>
+                        <ul class="mt-1 text-sm">
+                            <li>Name: ${data.data.student.name}</li>
+                            <li>ID: ${data.data.student.student_id}</li>
+                            <li>Course: ${data.data.student.course}</li>
+                            <li>Year Level: ${data.data.student.year_level}</li>
+                        </ul>
+                        <p class="mt-2 text-sm text-green-600">
+                            ✓ Validated for ${data.data.semester} Semester, ${data.data.academic_year}
+                        </p>
+                    </div>
+                </div>
+            `;
+
+            addToScanHistory(data);
+        }
+
+        // Handle failed scan
+        function handleFailedScan(message) {
+            const errorAudio = new Audio('/sounds/error.mp3');
+            errorAudio.play().catch(e => console.log('Audio play failed:', e));
+
+            document.getElementById('result').innerHTML = `
+                <div class="p-4 bg-red-50 text-red-800 rounded-lg">
+                    <div class="flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                        <span class="font-medium">Validation Failed</span>
+                    </div>
+                    <div class="mt-2 text-sm">
+                        ${message || 'Failed to validate student. Please try again.'}
+                    </div>
+                    <div class="mt-2 text-xs text-red-600">
+                        Please ensure the student is registered in the database.
+                    </div>
+                </div>
+            `;
+
+            updateStatistics(false);
+        }
+
+        // Handle scan error
+        function handleScanError(error) {
+            console.error('Error:', error);
+            const errorAudio = new Audio('/sounds/error.mp3');
+            errorAudio.play().catch(e => console.log('Audio play failed:', e));
+
+            let errorTitle = error.title || 'Error';
+            let errorMessage = error.description || 'Failed to process QR code. Please try again.';
+            let errorHint = error.hint || 'If the problem persists, please contact support.';
+
+            if (error.message === 'Student not found') {
+                errorTitle = 'Student Not Found';
+                errorMessage = 'The scanned QR code is not associated with any registered student.';
+                errorHint = 'Please verify that the student is registered in the system.';
+            } else if (error.message === 'Network response was not ok') {
+                errorTitle = 'Network Error';
+                errorMessage = 'Failed to communicate with the server.';
+                errorHint = 'Please check your internet connection and try again.';
+            }
+
+            document.getElementById('result').innerHTML = `
+                <div class="p-4 bg-red-50 text-red-800 rounded-lg">
+                    <div class="flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span class="font-medium">${errorTitle}</span>
+                    </div>
+                    <div class="mt-2 text-sm">
+                        ${errorMessage}
+                    </div>
+                    <div class="mt-2 text-xs text-red-600">
+                        ${errorHint}
+                    </div>
+                </div>
+            `;
+
+            updateStatistics(false);
         }
 
         function onScanFailure(error) {
@@ -728,6 +835,107 @@
             document.getElementById('today-scans').textContent = todayScans;
             document.getElementById('successful-scans').textContent = successfulScans;
             document.getElementById('failed-scans').textContent = failedScans;
+        }
+
+        // Clear validated students list
+        function clearValidatedStudents() {
+            const validatedStudents = document.getElementById('validated-students');
+            const scanHistory = document.getElementById('scan-history');
+            
+            // Show confirmation dialog
+            if (confirm('Are you sure you want to clear all scan history? This action cannot be undone.')) {
+                // Show loading state
+                validatedStudents.innerHTML = `
+                    <div class="p-4 bg-blue-50 text-blue-800 rounded-lg text-center">
+                        <div class="flex items-center justify-center">
+                            <svg class="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Clearing scan history...
+                        </div>
+                    </div>
+                `;
+
+                // Send request to clear database
+                fetch('/student-scan/clear', {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Clear the validated students display
+                        validatedStudents.innerHTML = `
+                            <div class="p-4 bg-gray-50 text-gray-600 rounded-lg text-center">
+                                No validated students yet.
+                            </div>
+                        `;
+
+                        // Clear scan history display
+                        scanHistory.innerHTML = `
+                            <div class="p-4 bg-gray-50 text-gray-600 rounded-lg text-center">
+                                No scan history available.
+                            </div>
+                        `;
+
+                        // Reset statistics display
+                        todayScans = 0;
+                        successfulScans = 0;
+                        failedScans = 0;
+                        document.getElementById('today-scans').textContent = '0';
+                        document.getElementById('successful-scans').textContent = '0';
+                        document.getElementById('failed-scans').textContent = '0';
+
+                        // Show success message
+                        const result = document.getElementById('result');
+                        if (result) {
+                            result.innerHTML = `
+                                <div class="p-4 bg-green-50 text-green-800 rounded-lg">
+                                    <div class="flex items-center">
+                                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                        <span class="font-medium">Cleared Successfully</span>
+                                    </div>
+                                    <div class="mt-2 text-sm">
+                                        All scan history has been cleared from the database.
+                                    </div>
+                                </div>
+                            `;
+                        }
+                    } else {
+                        throw new Error(data.message || 'Failed to clear scan history');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    validatedStudents.innerHTML = `
+                        <div class="p-4 bg-red-50 text-red-800 rounded-lg text-center">
+                            <div class="flex items-center justify-center">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                Failed to clear scan history. Please try again.
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+        }
+
+        // Toggle scan history visibility
+        function toggleScanHistory() {
+            const scanHistory = document.getElementById('scan-history');
+            if (scanHistory.classList.contains('hidden')) {
+                scanHistory.classList.remove('hidden');
+                loadScanHistory(); // Refresh scan history when showing
+            } else {
+                scanHistory.classList.add('hidden');
+            }
         }
 
         // Add to scan history and update validated students

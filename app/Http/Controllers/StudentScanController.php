@@ -111,26 +111,14 @@ class StudentScanController extends Controller
      */
     public function getValidated()
     {
-        $validatedScans = \App\Models\StudentScan::with('student')
-            ->where('status', 'success')
-            ->orderBy('created_at', 'desc')
-            ->get()
-            ->map(function ($scan) {
-                return [
-                    'id' => $scan->id,
-                    'student' => [
-                        'student_id' => $scan->student->student_id,
-                        'name' => $scan->student->name,
-                        'course' => $scan->student->course,
-                        'year_level' => $scan->student->year_level,
-                    ],
-                    'status' => $scan->status,
-                    'message' => $scan->message,
-                    'created_at' => $scan->created_at,
-                ];
-            });
-
-        return response()->json($validatedScans);
+        try {
+            $scans = StudentScan::with('student')
+                ->orderBy('created_at', 'desc')
+                ->get();
+            return response()->json($scans);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Failed to fetch validated students'], 500);
+        }
     }
 
     /**
@@ -162,5 +150,23 @@ class StudentScanController extends Controller
     public function show(StudentScan $scan)
     {
         return response()->json($scan);
+    }
+
+    public function clearHistory()
+    {
+        try {
+            // Delete all records from student_scans table
+            StudentScan::truncate();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Scan history cleared successfully'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to clear scan history: ' . $e->getMessage()
+            ], 500);
+        }
     }
 } 
