@@ -431,6 +431,298 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Admin Dashboard -->
+                    <div id="admin" class="admin-content">
+                        <!-- Statistics Cards -->
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                            <div class="bg-white rounded-lg shadow p-4">
+                                <div class="flex items-center">
+                                    <div class="p-3 rounded-full bg-blue-100 text-blue-600">
+                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="ml-4">
+                                        <h3 class="text-lg font-semibold text-gray-700">Total Students</h3>
+                                        <p class="text-2xl font-bold text-gray-900" id="total-students">0</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="bg-white rounded-lg shadow p-4">
+                                <div class="flex items-center">
+                                    <div class="p-3 rounded-full bg-green-100 text-green-600">
+                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="ml-4">
+                                        <h3 class="text-lg font-semibold text-gray-700">Validated Today</h3>
+                                        <p class="text-2xl font-bold text-gray-900" id="validated-today">0</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="bg-white rounded-lg shadow p-4">
+                                <div class="flex items-center">
+                                    <div class="p-3 rounded-full bg-yellow-100 text-yellow-600">
+                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="ml-4">
+                                        <h3 class="text-lg font-semibold text-gray-700">Pending</h3>
+                                        <p class="text-2xl font-bold text-gray-900" id="pending-validations">0</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="bg-white rounded-lg shadow p-4">
+                                <div class="flex items-center">
+                                    <div class="p-3 rounded-full bg-red-100 text-red-600">
+                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="ml-4">
+                                        <h3 class="text-lg font-semibold text-gray-700">Failed Scans</h3>
+                                        <p class="text-2xl font-bold text-gray-900" id="failed-validations">0</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Quick Actions -->
+                        <div class="bg-white rounded-lg shadow mb-6">
+                            <div class="p-4 border-b border-gray-200">
+                                <h3 class="text-lg font-semibold text-gray-900">Quick Actions</h3>
+                            </div>
+                            <div class="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <button onclick="exportData('excel')" class="flex items-center justify-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                    </svg>
+                                    Export to Excel
+                                </button>
+                                <button onclick="generateReport()" class="flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                    </svg>
+                                    Generate Report
+                                </button>
+                                <button onclick="showSystemStatus()" class="flex items-center justify-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                    </svg>
+                                    System Status
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Real-time Activity Monitor -->
+                        <div class="bg-white rounded-lg shadow mb-6">
+                            <div class="p-4 border-b border-gray-200">
+                                <h3 class="text-lg font-semibold text-gray-900">Real-time Activity Monitor</h3>
+                            </div>
+                            <div class="p-4">
+                                <div class="space-y-4" id="activity-feed">
+                                    <!-- Activity items will be dynamically added here -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- System Health -->
+                        <div class="bg-white rounded-lg shadow mb-6">
+                            <div class="p-4 border-b border-gray-200">
+                                <h3 class="text-lg font-semibold text-gray-900">System Health</h3>
+                            </div>
+                            <div class="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div class="p-4 bg-gray-50 rounded-lg">
+                                    <h4 class="text-sm font-medium text-gray-700 mb-2">Scanner Status</h4>
+                                    <div class="flex items-center" id="scanner-health">
+                                        <span class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                                        <span class="text-sm text-gray-600">Operational</span>
+                                    </div>
+                                </div>
+                                <div class="p-4 bg-gray-50 rounded-lg">
+                                    <h4 class="text-sm font-medium text-gray-700 mb-2">Database Status</h4>
+                                    <div class="flex items-center" id="database-health">
+                                        <span class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                                        <span class="text-sm text-gray-600">Connected</span>
+                                    </div>
+                                </div>
+                                <div class="p-4 bg-gray-50 rounded-lg">
+                                    <h4 class="text-sm font-medium text-gray-700 mb-2">API Status</h4>
+                                    <div class="flex items-center" id="api-health">
+                                        <span class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                                        <span class="text-sm text-gray-600">Available</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Add these JavaScript functions -->
+                        <script>
+                            // Export data function
+                            function exportData(format) {
+                                const loadingToast = showToast('Preparing export...', 'loading');
+                                fetch(`/export-data?format=${format}`)
+                                    .then(response => response.blob())
+                                    .then(blob => {
+                                        const url = window.URL.createObjectURL(blob);
+                                        const a = document.createElement('a');
+                                        a.href = url;
+                                        a.download = `validation-data-${new Date().toISOString().split('T')[0]}.${format}`;
+                                        document.body.appendChild(a);
+                                        a.click();
+                                        window.URL.revokeObjectURL(url);
+                                        hideToast(loadingToast);
+                                        showToast('Export completed!', 'success');
+                                    })
+                                    .catch(error => {
+                                        console.error('Export error:', error);
+                                        hideToast(loadingToast);
+                                        showToast('Export failed. Please try again.', 'error');
+                                    });
+                            }
+
+                            // Show system status
+                            function showSystemStatus() {
+                                const modal = document.createElement('div');
+                                modal.className = 'fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center';
+                                modal.innerHTML = `
+                                    <div class="bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full mx-4">
+                                        <div class="flex justify-between items-center mb-4">
+                                            <h3 class="text-lg font-semibold text-gray-900">System Status</h3>
+                                            <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-gray-500">
+                                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        <div class="space-y-4">
+                                            <div class="p-4 bg-gray-50 rounded-lg">
+                                                <h4 class="font-medium text-gray-700 mb-2">System Information</h4>
+                                                <div class="space-y-2 text-sm text-gray-600">
+                                                    <p>Version: 1.0.0</p>
+                                                    <p>Last Updated: ${new Date().toLocaleString()}</p>
+                                                    <p>Environment: Production</p>
+                                                </div>
+                                            </div>
+                                            <div class="p-4 bg-gray-50 rounded-lg">
+                                                <h4 class="font-medium text-gray-700 mb-2">Performance Metrics</h4>
+                                                <div class="space-y-2">
+                                                    <div class="flex justify-between items-center">
+                                                        <span class="text-sm text-gray-600">Scanner Response Time</span>
+                                                        <span class="text-sm font-medium text-green-600">120ms</span>
+                                                    </div>
+                                                    <div class="flex justify-between items-center">
+                                                        <span class="text-sm text-gray-600">Database Query Time</span>
+                                                        <span class="text-sm font-medium text-green-600">85ms</span>
+                                                    </div>
+                                                    <div class="flex justify-between items-center">
+                                                        <span class="text-sm text-gray-600">API Response Time</span>
+                                                        <span class="text-sm font-medium text-green-600">150ms</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                                document.body.appendChild(modal);
+                            }
+
+                            // Toast notification system
+                            function showToast(message, type = 'info') {
+                                const toast = document.createElement('div');
+                                toast.className = `fixed bottom-4 right-4 px-6 py-3 rounded-lg shadow-lg ${
+                                    type === 'error' ? 'bg-red-500' :
+                                    type === 'success' ? 'bg-green-500' :
+                                    type === 'loading' ? 'bg-blue-500' : 'bg-gray-800'
+                                } text-white`;
+                                
+                                const icon = type === 'loading' ? 
+                                    '<svg class="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>' :
+                                    '';
+                                
+                                toast.innerHTML = `
+                                    <div class="flex items-center">
+                                        ${icon}
+                                        <span>${message}</span>
+                                    </div>
+                                `;
+                                
+                                document.body.appendChild(toast);
+                                
+                                if (type !== 'loading') {
+                                    setTimeout(() => {
+                                        toast.remove();
+                                    }, 3000);
+                                }
+                                
+                                return toast;
+                            }
+
+                            function hideToast(toast) {
+                                if (toast && toast.parentElement) {
+                                    toast.remove();
+                                }
+                            }
+
+                            // Initialize real-time activity monitor
+                            function initActivityMonitor() {
+                                const activityFeed = document.getElementById('activity-feed');
+                                
+                                function addActivity(activity) {
+                                    const activityItem = document.createElement('div');
+                                    activityItem.className = 'flex items-center p-3 bg-gray-50 rounded-lg';
+                                    activityItem.innerHTML = `
+                                        <div class="flex-shrink-0">
+                                            <span class="w-2 h-2 ${activity.type === 'success' ? 'bg-green-500' : 'bg-yellow-500'} rounded-full"></span>
+                                        </div>
+                                        <div class="ml-3">
+                                            <p class="text-sm text-gray-600">${activity.message}</p>
+                                            <p class="text-xs text-gray-400">${activity.timestamp}</p>
+                                        </div>
+                                    `;
+                                    
+                                    if (activityFeed.firstChild) {
+                                        activityFeed.insertBefore(activityItem, activityFeed.firstChild);
+                                    } else {
+                                        activityFeed.appendChild(activityItem);
+                                    }
+                                    
+                                    // Keep only the last 5 activities
+                                    while (activityFeed.children.length > 5) {
+                                        activityFeed.removeChild(activityFeed.lastChild);
+                                    }
+                                }
+
+                                // Example: Add some initial activities
+                                addActivity({
+                                    type: 'success',
+                                    message: 'System initialized successfully',
+                                    timestamp: new Date().toLocaleTimeString()
+                                });
+                            }
+
+                            // Initialize the admin dashboard
+                            document.addEventListener('DOMContentLoaded', function() {
+                                initActivityMonitor();
+                                
+                                // Update statistics periodically
+                                setInterval(() => {
+                                    fetch('/admin/stats')
+                                        .then(response => response.json())
+                                        .then(data => {
+                                            document.getElementById('total-students').textContent = data.totalStudents;
+                                            document.getElementById('validated-today').textContent = data.validatedToday;
+                                            document.getElementById('pending-validations').textContent = data.pending;
+                                            document.getElementById('failed-validations').textContent = data.failed;
+                                        })
+                                        .catch(console.error);
+                                }, 30000); // Update every 30 seconds
+                            });
+                        </script>
+                    </div>
                 </div>
             </div>
         </main>
