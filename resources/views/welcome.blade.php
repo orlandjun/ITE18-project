@@ -11,7 +11,7 @@
     <body class="antialiased bg-gradient-to-br from-green-50 to-green-100 min-h-screen">
         <div style="display:none">
             Debug Path: {{ public_path('QrCodeData') }}<br>
-            Files: {{ print_r(scandir(public_path('QrCodeData')), true) }}
+             
         </div>
         <div class="relative min-h-screen">
             <!-- Navigation -->
@@ -66,7 +66,7 @@
                     <div class="text-center py-16 relative">
                         <!-- Background Image Container -->
                         <div class="absolute inset-0 flex justify-center items-center -z-10 opacity-10">
-                            <img src="{{ asset('storage/images/body.png') }}" 
+                            <img src="{{ asset('storage/images/body.jpg') }}" 
                                  alt="CSU Background" 
                                  class="w-full h-full object-cover"
                                  onerror="this.onerror=null; this.style.display='none'"

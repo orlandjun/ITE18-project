@@ -897,7 +897,7 @@
         // Process QR code data
         async function processQrCode(qrCodeMessage) {
             // Basic validation of QR code format (221-XXXX-VALID)
-            if (!qrCodeMessage.match(/^221-\d{4}-VALID$/)) {
+            if (!qrCodeMessage.match(/^\d{3}-(\d{4})-VALID$/)) {
                 // Play error sound
                 const errorAudio = new Audio('/sounds/error.mp3');
                 errorAudio.play().catch(e => console.log('Audio play failed:', e));
