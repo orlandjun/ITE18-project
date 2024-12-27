@@ -39,11 +39,11 @@ class StudentSeeder extends Seeder
                 'qr_code' => '221-2024-VALID'
             ],
             [
-                'student_id' => '201-00761',
+                'student_id' => '201-0061',
                 'name' => 'Jade Collado',
                 'course' => 'BSIT',
                 'year_level' => '3rd',
-                'qr_code' => '201-00761-VALID'
+                'qr_code' => '201-00617-VALID'
             ],
             [
                 'student_id' => '201-0761',
